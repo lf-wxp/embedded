@@ -1,0 +1,50 @@
+[package]
+name = "mb2-wukong-expansion"
+version = "0.1.2"
+authors = ["Bart Massey <bart.massey@gmail.com>"]
+edition = "2021"
+categories = ["embedded", "no-std", "hardware-support"]
+keywords = ["microbit", "wukong"]
+description = "Board crate for Elecfreaks Wukong Extension for the BBC micro:bit v2"
+documentation = "https://docs.rs/crate/mb2-wukong-expansion"
+license-file = "LICENSE.txt"
+readme = "README.md"
+repository = "https://github.com/BartMassey/mb2-wukong-expansion"
+
+[dependencies]
+embedded-dma = "0.2"
+embedded-hal = "1.0"
+libm = "0.2"
+smart-leds = "0.4"
+smart-leds-trait = "0.3"
+ws2812-nrf52833-pwm = "^0.2.1"
+
+[dependencies.nrf52833-hal]
+version = "0.18"
+default-features = false
+
+[features]
+default = ["ambient", "buzzer", "mood_lights", "motor", "servo"]
+ambient = []
+bus = []
+buzzer = []
+mood_lights = ["bus"]
+motor = ["bus"]
+servo = ["bus"]
+rt = ["nrf52833-hal/rt"]
+embedded-hal-02 = ["nrf52833-hal/embedded-hal-02"]
+defmt-03 = ["embedded-hal/defmt-03"]
+
+[dev-dependencies]
+cortex-m-rt = "0.7"
+microbit-v2 = "0.15.1"
+panic-probe = "0.3.2"
+panic-rtt-target = "0.1.3"
+rtt-target = "0.5.0"
+
+[dev-dependencies.cortex-m]
+version = "0.7"
+features = ["inline-asm", "critical-section-single-core"]
+
+[badges.maintenance]
+status = "actively-developed"

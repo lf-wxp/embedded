@@ -11,6 +11,8 @@ test = false
 [dependencies]
 cortex-m = {version = "0.7.7", features = ["critical-section-single-core"]}
 cortex-m-rt = "0.7.5"
+critical-section = "1.2.0"
+critical-section-lock-mut = "0.1.2"
 embedded-hal = "1.0.0"
 heapless = "0.9.3"
 mb2-wukong-expansion = {path = "vendor/mb2-wukong-expansion"}

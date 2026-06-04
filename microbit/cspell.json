@@ -1,3 +1,12 @@
 {
-	"words": ["heapless", "microbit", "rprintln", "wukong"]
+	"words": [
+		"gipote",
+		"GPIOTE",
+		"heapless",
+		"microbit",
+		"NVIC",
+		"pullup",
+		"rprintln",
+		"wukong"
+	]
 }

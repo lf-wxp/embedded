@@ -1,0 +1,5 @@
+# 构建产物
+/target/
+
+# SoftDevice hex 文件 (体积大，不提交到 Git)
+softdevice/*.hex

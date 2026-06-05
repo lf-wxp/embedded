@@ -1,0 +1,156 @@
+# =============================================================================
+# micro:bit V2 BLE 项目 - cargo-make 任务配置
+#
+# 使用方法:
+#   cargo make flash        - 一键完成: 烧录 SoftDevice + 编译并烧录应用程序
+#   cargo make flash-sd     - 仅烧录 SoftDevice S113
+#   cargo make flash-app    - 仅编译并烧录应用程序
+#   cargo make erase        - 完全擦除芯片
+#   cargo make reset        - 复位芯片
+#   cargo make check        - 检查代码编译
+#   cargo make fmt          - 格式化代码
+#   cargo make clippy       - 运行 Clippy 静态分析
+# =============================================================================
+
+[env]
+CHIP = "nRF52833_xxAA"
+SOFTDEVICE_HEX = "softdevice/s113_nrf52_7.3.0_softdevice.hex"
+TARGET = "thumbv7em-none-eabihf"
+
+# =============================================================================
+# 默认任务: 一键烧录全部
+# =============================================================================
+[tasks.default]
+alias = "flash"
+
+# =============================================================================
+# flash - 完整流程: 烧录 SoftDevice + 编译并烧录应用
+# =============================================================================
+[tasks.flash]
+description = "一键完成: 烧录 SoftDevice + 编译并烧录应用程序"
+dependencies = ["flash-sd", "flash-app"]
+
+# =============================================================================
+# flash-sd - 烧录 SoftDevice S113 协议栈
+# =============================================================================
+[tasks.flash-sd]
+description = "烧录 SoftDevice S113 v7.3.0 到芯片"
+command = "probe-rs"
+args = ["download", "--chip", "${CHIP}", "--format", "hex", "${SOFTDEVICE_HEX}"]
+
+[tasks.flash-sd.condition]
+files_exist = ["${SOFTDEVICE_HEX}"]
+
+# =============================================================================
+# flash-app - 编译并烧录应用程序
+# =============================================================================
+[tasks.flash-app]
+description = "编译并烧录应用程序 (Release 模式)"
+command = "cargo"
+args = ["run", "--release"]
+
+# =============================================================================
+# flash-app-debug - 编译并烧录应用程序 (Debug 模式)
+# =============================================================================
+[tasks.flash-app-debug]
+description = "编译并烧录应用程序 (Debug 模式)"
+command = "cargo"
+args = ["run"]
+
+# =============================================================================
+# erase - 完全擦除芯片 (包括 SoftDevice)
+# =============================================================================
+[tasks.erase]
+description = "完全擦除芯片 Flash (包括 SoftDevice)"
+command = "probe-rs"
+args = ["erase", "--chip", "${CHIP}"]
+
+# =============================================================================
+# reset - 复位芯片
+# =============================================================================
+[tasks.reset]
+description = "复位芯片"
+command = "probe-rs"
+args = ["reset", "--chip", "${CHIP}"]
+
+# =============================================================================
+# check - 检查代码编译
+# =============================================================================
+[tasks.check]
+description = "检查代码是否能正确编译"
+command = "cargo"
+args = ["check"]
+
+# =============================================================================
+# fmt - 格式化代码
+# =============================================================================
+[tasks.fmt]
+description = "使用 rustfmt 格式化代码"
+command = "cargo"
+args = ["fmt"]
+
+# =============================================================================
+# fmt-check - 检查代码格式 (不修改文件)
+# =============================================================================
+[tasks.fmt-check]
+description = "检查代码格式是否符合规范 (不修改文件)"
+command = "cargo"
+args = ["fmt", "--", "--check"]
+
+# =============================================================================
+# clippy - 运行 Clippy 静态分析
+# =============================================================================
+[tasks.clippy]
+description = "运行 Clippy 静态分析检查"
+command = "cargo"
+args = ["clippy", "--", "-D", "warnings"]
+
+# =============================================================================
+# build - 编译 Release 固件 (不烧录)
+# =============================================================================
+[tasks.build]
+description = "编译 Release 固件 (不烧录)"
+command = "cargo"
+args = ["build", "--release"]
+
+# =============================================================================
+# clean - 清理构建产物
+# =============================================================================
+[tasks.clean]
+description = "清理构建产物"
+command = "cargo"
+args = ["clean"]
+
+# =============================================================================
+# setup - 首次设置: 下载 SoftDevice 并烧录
+# =============================================================================
+[tasks.setup]
+description = "首次设置: 下载 SoftDevice hex 文件"
+script_runner = "@shell"
+script = '''
+mkdir -p softdevice
+if [ ! -f "${SOFTDEVICE_HEX}" ]; then
+    echo "=========================================="
+    echo " SoftDevice S113 v7.3.0 下载"
+    echo "=========================================="
+    curl -L -o "${SOFTDEVICE_HEX}" \
+        "https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/softdevices/s113/s113_nrf52_7.3.0_softdevice.hex"
+    if [ $? -eq 0 ]; then
+        echo "✅ SoftDevice 下载完成: ${SOFTDEVICE_HEX}"
+    else
+        echo "❌ 下载失败，请手动下载 SoftDevice S113 v7.3.0"
+        echo "   下载地址: https://www.nordicsemi.com/Software-and-tools/Software/S113/Download"
+        echo "   放置路径: ${SOFTDEVICE_HEX}"
+        exit 1
+    fi
+else
+    echo "✅ SoftDevice 已存在: ${SOFTDEVICE_HEX}"
+fi
+'''
+
+# =============================================================================
+# init - 完整初始化: 下载 SoftDevice + 擦除芯片 + 烧录全部
+# =============================================================================
+[tasks.init]
+description = "完整初始化: 下载 SoftDevice + 擦除芯片 + 烧录全部"
+dependencies = ["setup", "erase", "flash"]

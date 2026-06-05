@@ -1,0 +1,22 @@
+{
+	"words": [
+		"bitfield",
+		"codegen",
+		"ctiv",
+		"defmt",
+		"eabihf",
+		"gatts",
+		"gipote",
+		"GPIOTE",
+		"heapless",
+		"microbit",
+		"NVIC",
+		"periph",
+		"pullup",
+		"rprintln",
+		"rustup",
+		"softdevice",
+		"thumbv",
+		"wukong"
+	]
+}

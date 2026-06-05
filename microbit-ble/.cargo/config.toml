@@ -1,0 +1,22 @@
+[build]
+target = "thumbv7em-none-eabihf"
+
+[target.thumbv7em-none-eabihf]
+runner = "probe-rs run --chip nRF52833_xxAA"
+rustflags = [
+  "-C",
+  "linker=rust-lld",
+  "-C",
+  "link-arg=-Tlink.x",
+  "-C",
+  "link-arg=-Tdefmt.x",
+  "-C",
+  "link-arg=-Tinterrupt_aliases.x",
+  "-C",
+  "link-arg=--nmagic",
+  "-C",
+  "link-arg=--allow-multiple-definition",
+]
+
+[env]
+DEFMT_LOG = "info"

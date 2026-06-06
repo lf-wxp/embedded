@@ -1,0 +1,22 @@
+# Rust
+target/
+**/target/
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 临时文件
+*.log
+*.tmp
+
+dist/

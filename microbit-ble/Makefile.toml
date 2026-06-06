@@ -11,7 +11,6 @@
 #   cargo make check        - 检查代码编译
 #   cargo make fmt          - 格式化代码
 #   cargo make clippy       - 运行 Clippy 静态分析
-#   cargo make web          - 启动 Web Bluetooth 演示页面 (localhost:8080)
 # =============================================================================
 
 [env]
@@ -172,26 +171,4 @@ probe-rs attach --chip ${CHIP} --rtt-scan-memory target/${TARGET}/debug/microbit
 description = "完整初始化: 擦除芯片 + 烧录全部"
 dependencies = ["erase", "flash"]
 
-# =============================================================================
-# web - 启动浏览器演示页面服务器（Rust，纯 std，端口 8080）
-# =============================================================================
-[tasks.web]
-description = "启动 Web Bluetooth 演示页面服务器 (http://127.0.0.1:8080)"
-script_runner = "@shell"
-script = '''
-HOST_TARGET=$(rustc -vV | sed -n 's/^host: //p')
-echo ">>> 宿主 target: ${HOST_TARGET}"
-echo ">>> 编译并启动 web-server (端口 8080)..."
-cargo run --release --target "${HOST_TARGET}" --manifest-path web-server/Cargo.toml
-'''
 
-# =============================================================================
-# web-build - 仅编译 web-server
-# =============================================================================
-[tasks.web-build]
-description = "仅编译 web-server (不运行)"
-script_runner = "@shell"
-script = '''
-HOST_TARGET=$(rustc -vV | sed -n 's/^host: //p')
-cargo build --release --target "${HOST_TARGET}" --manifest-path web-server/Cargo.toml
-'''

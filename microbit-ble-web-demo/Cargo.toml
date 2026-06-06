@@ -1,0 +1,66 @@
+[package]
+authors = ["franciscowu"]
+description = "micro:bit V2 BLE Web Demo - Leptos Frontend"
+edition = "2021"
+license = "MIT"
+name = "microbit-ble-web-demo"
+version = "0.2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Leptos 前端框架
+leptos = { version = "0.8.19", features = ["csr"] }
+leptos-use = "0.18.3"
+# Web 绑定
+js-sys = "0.3.99"
+wasm-bindgen = "0.2.122"
+wasm-bindgen-futures = "0.4.72"
+web-sys = { version = "0.3.99", features = [
+  "Bluetooth",
+  "BluetoothDevice",
+  "BluetoothLeScanFilterInit",
+  "BluetoothRemoteGattServer",
+  "BluetoothRemoteGattService",
+  "BluetoothRemoteGattCharacteristic",
+  "RequestDeviceOptions",
+  "Window",
+  "console",
+  "Event",
+  "EventTarget",
+  "Blob",
+  "Url",
+] }
+# 日志
+console_error_panic_hook = "0.1.7"
+console_log = "1.0.0"
+log = "0.4.32"
+# 工具库
+base64 = "0.22.1"
+hex = "0.4.3"
+serde = { version = "1.0.228", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.72"
+
+[features]
+# 用于 Trunk 构建
+csr = ["leptos/csr"]
+hydrate = ["leptos/hydrate"]
+ssr = ["leptos/ssr"]
+
+# 默认启用 CSR（客户端渲染）
+default = ["csr"]
+
+[package.metadata.trunk]
+# Trunk 配置
+assets = []
+
+[profile.release]
+codegen-units = 1 
+lto = true 
+opt-level = "z" # 最小化 WASM 体积
+panic = "abort" 
+strip = true

@@ -1,0 +1,82 @@
+# Trunk 配置文件
+# https://trunkrs.dev/configuration/
+
+# Trunk 版本要求
+trunk-version = "*"
+
+[build]
+# 入口 HTML 文件
+target = "index.html"
+# Release 模式
+release = false
+# 输出目录
+dist = "./dist"
+# 公共 URL 路径
+public_url = "/"
+# 文件名包含哈希值
+filehash = true
+# 注入脚本
+inject_scripts = true
+# 离线模式
+offline = false
+# 冻结依赖
+frozen = false
+# 锁定依赖
+locked = false
+# 压缩策略: never, on_release, always
+minify = "never"
+# 禁用子资源完整性
+no_sri = false
+# Cargo profile
+# cargo_profile = "release-trunk"
+# 注入 nonce 属性
+create_nonce = false
+
+[watch]
+# 监听路径（build.target 的父目录默认被监听）
+watch = []
+# 忽略路径
+ignore = []
+
+[serve]
+# 服务地址
+addresses = ["127.0.0.1"]
+# 服务端口
+port = 8080
+# 禁用反向 DNS 查找
+disable_address_lookup = false
+# 构建完成后打开浏览器
+open = false
+# 禁用 SPA 回退
+no_spa = false
+# 禁用自动重载
+no_autoreload = false
+# 禁用错误报告
+no_error_reporting = false
+# WebSocket 协议
+ws_protocol = "ws"
+# TLS 证书和私钥（两者都设置时启用 TLS）
+# tls_cert_path = "self_signed_certs/cert.pem"
+# tls_key_path = "self_signed_certs/key.pem"
+# 额外响应头
+# headers = { "X-Foo" = "bar" }
+
+[clean]
+# 是否执行 cargo clean
+cargo = false
+
+[tools]
+# sass 版本
+sass = "1.69.5"
+# wasm-bindgen 版本
+
+## 代理设置（可选，默认为 None）
+# [[proxy]]
+# backend = "ws://localhost:9000/api/ws"
+# ws = true
+
+## 构建钩子（可选，默认为 None）
+# [[hooks]]
+# stage = "pre_build"
+# command = "echo"
+# command_arguments = ["Hello", "Trunk!"]

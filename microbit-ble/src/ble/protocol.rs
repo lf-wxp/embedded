@@ -1,88 +1,88 @@
-//! 二进制协议编解码
+//! Binary protocol encode/decode
 //!
-//! 帧格式：
+//! Frame format:
 //! ```text
 //! ┌──────┬──────┬──────────┬──────────────┬──────┐
 //! │ SOF  │ CMD  │  LEN     │  PAYLOAD     │ CRC8 │
 //! │ 0xAA │ 1B   │  1B      │  0..N bytes  │ 1B   │
 //! └──────┴──────┴──────────┴──────────────┴──────┘
 //! ```
-//! - SOF: 帧起始 0xAA
-//! - CMD: 指令码（见 [`Cmd`]）
-//! - LEN: payload 长度（0~MAX_PAYLOAD）
-//! - CRC8: 多项式 0x07，覆盖 CMD + LEN + PAYLOAD
+//! - SOF: frame start 0xAA
+//! - CMD: command code (see [`Cmd`])
+//! - LEN: payload length (0~MAX_PAYLOAD)
+//! - CRC8: polynomial 0x07, covers CMD + LEN + PAYLOAD
 //!
-//! 这个模块在 no_std 环境中工作，不分配堆内存。
+//! This module works in no_std environment without heap allocation.
 
 #![allow(dead_code)]
 
-/// 帧起始字节
+/// Frame start byte
 pub const SOF: u8 = 0xAA;
 
-/// 单帧最大 payload 长度（受 ATT MTU 限制，留余量）
+/// Maximum payload length per frame (limited by ATT MTU, with margin)
 pub const MAX_PAYLOAD: usize = 60;
 
-/// 单帧最大总长度 = SOF(1) + CMD(1) + LEN(1) + PAYLOAD + CRC(1)
+/// Maximum total frame length = SOF(1) + CMD(1) + LEN(1) + PAYLOAD + CRC(1)
 pub const MAX_FRAME_LEN: usize = 4 + MAX_PAYLOAD;
 
-// ===== 指令码常量 =====
+// ===== Command code constants =====
 
-/// 心跳请求（无 payload）
+/// Ping request (no payload)
 pub const CMD_PING: u8 = 0x01;
-/// LED 矩阵设置（payload: 25 字节亮度，0=灭 1=亮）
+/// LED matrix set (payload: 25 bytes brightness, 0=off 1=on)
 pub const CMD_LED_SET: u8 = 0x02;
-/// LED 清空（无 payload）
+/// LED clear (no payload)
 pub const CMD_LED_CLEAR: u8 = 0x03;
-/// 显示一个字符（payload: 1 字节 ASCII，简化版滚动文字）
+/// Display a character (payload: 1 byte ASCII, simplified scrolling text)
 pub const CMD_LED_CHAR: u8 = 0x04;
-/// 读取芯片温度（无 payload，回 [`CMD_TEMP_RESP`]）
+/// Read chip temperature (no payload, responds with [`CMD_TEMP_RESP`])
 pub const CMD_TEMP_GET: u8 = 0x05;
-/// 订阅按钮事件（payload: 1 字节，0=取消 1=订阅）
+/// Subscribe to button events (payload: 1 byte, 0=unsubscribe 1=subscribe)
 pub const CMD_BTN_SUBSCRIBE: u8 = 0x06;
-/// 回显（payload: 任意字节，回 [`CMD_ECHO_RESP`]）
+/// Echo (payload: arbitrary bytes, responds with [`CMD_ECHO_RESP`])
 pub const CMD_ECHO: u8 = 0x07;
 
-/// 心跳应答（无 payload）
+/// Ping response (no payload)
 pub const CMD_PONG: u8 = 0x81;
-/// LED 操作应答（payload: 1 字节状态，0=OK 其它=错误码）
+/// LED operation acknowledgement (payload: 1 byte status, 0=OK other=error code)
 pub const CMD_LED_ACK: u8 = 0x82;
-/// 温度应答（payload: 4 字节 i32 LE，单位 0.01℃）
+/// Temperature response (payload: 4 bytes i32 LE, unit 0.01°C)
 pub const CMD_TEMP_RESP: u8 = 0x85;
-/// 回显应答（payload: 与请求相同）
+/// Echo response (payload: same as request)
 pub const CMD_ECHO_RESP: u8 = 0x87;
-/// 按钮事件通知（payload: 2 字节，[btn_id, state]，btn_id: A=1 B=2，state: 0=释放 1=按下）
+/// Button event notification (payload: 2 bytes, [btn_id, state], btn_id: A=1 B=2, state: 0=released 1=pressed)
 pub const CMD_BTN_EVENT: u8 = 0x90;
-/// 错误响应（payload: 1 字节错误码）
+/// Error response (payload: 1 byte error code)
 pub const CMD_ERROR: u8 = 0xFF;
 
-// ===== 错误码 =====
+// ===== Error codes =====
 
 pub const ERR_BAD_FRAME: u8 = 0x01;
 pub const ERR_BAD_CRC: u8 = 0x02;
 pub const ERR_UNKNOWN_CMD: u8 = 0x03;
 pub const ERR_BAD_PAYLOAD: u8 = 0x04;
 
-/// 解析后的指令帧（零拷贝引用 payload）
+/// Parsed command frame (zero-copy reference to payload)
 #[derive(Debug, Clone, Copy)]
 pub struct Frame<'a> {
   pub cmd: u8,
   pub payload: &'a [u8],
 }
 
-/// 帧解析错误
+/// Frame parse error
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseError {
-  /// 帧太短，无法构成完整帧
+  /// Frame too short to form a complete frame
   TooShort,
-  /// 帧起始字节不正确
+  /// Incorrect frame start byte
   BadSof,
-  /// 长度字段超过 MAX_PAYLOAD
+  /// Length field exceeds MAX_PAYLOAD
   PayloadTooLong,
-  /// CRC 校验失败
+  /// CRC check failed
   BadCrc,
 }
 
-/// 计算 CRC-8 (多项式 0x07，初始值 0x00)
+/// Calculate CRC-8 (polynomial 0x07, initial value 0x00)
 pub fn crc8(data: &[u8]) -> u8 {
   let mut crc: u8 = 0x00;
   for &b in data {
@@ -98,7 +98,7 @@ pub fn crc8(data: &[u8]) -> u8 {
   crc
 }
 
-/// 解析一帧。成功返回 [`Frame`]，失败返回 [`ParseError`]
+/// Parse one frame. Returns [`Frame`] on success, [`ParseError`] on failure
 pub fn parse_frame(buf: &[u8]) -> Result<Frame<'_>, ParseError> {
   if buf.len() < 4 {
     return Err(ParseError::TooShort);
@@ -124,12 +124,12 @@ pub fn parse_frame(buf: &[u8]) -> Result<Frame<'_>, ParseError> {
   Ok(Frame { cmd, payload })
 }
 
-/// 计算 cmd+len+payload 的 CRC8
+/// Calculate CRC8 over cmd+len+payload
 fn crc8_for_frame(cmd: u8, payload: &[u8]) -> u8 {
-  // 复用 crc8: 先 cmd + len，再追加 payload
+  // Reuse crc8: cmd + len first, then append payload
   let header = [cmd, payload.len() as u8];
   let mut crc: u8 = 0x00;
-  // 内联展开，避免分配
+  // Inline expansion to avoid allocation
   for &b in header.iter().chain(payload.iter()) {
     crc ^= b;
     for _ in 0..8 {
@@ -143,9 +143,9 @@ fn crc8_for_frame(cmd: u8, payload: &[u8]) -> u8 {
   crc
 }
 
-/// 把一帧编码到 `out` 缓冲区，返回写入字节数
+/// Encode one frame into `out` buffer, return number of bytes written
 ///
-/// 如果 payload 太长或 out 容量不足，返回 None。
+/// Returns None if payload is too long or out capacity is insufficient.
 pub fn build_frame(cmd: u8, payload: &[u8], out: &mut [u8]) -> Option<usize> {
   if payload.len() > MAX_PAYLOAD {
     return None;

@@ -1,6 +1,6 @@
-//! 连接/断开按钮组件
-//! 使用全局共享的 BleService 进行 BLE 连接/断开操作
-//! 连接成功后设置数据接收回调，解析帧并分发到 AppState
+//! Connect/Disconnect button component
+//! Uses the globally shared BleService for BLE connect/disconnect operations
+//! After successful connection, sets up data receive callback, parses frames and dispatches to AppState
 
 use crate::components::comm_log::{log_error, log_info, log_rx};
 use crate::context::{get_global_ble, AppState, ReceivedFrame};
@@ -9,11 +9,11 @@ use crate::utils::{parse_frame, to_hex};
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-/// ConnectButtons 组件
-/// 包含"连接"和"断开"两个按钮
+/// ConnectButtons component
+/// Contains "Connect" and "Disconnect" buttons
 #[component]
 pub fn ConnectButtons() -> impl IntoView {
-  // 从上下文中获取应用状态
+  // Get application state from context
   let app_state = expect_context::<AppState>();
 
   let AppState {
@@ -23,7 +23,7 @@ pub fn ConnectButtons() -> impl IntoView {
     last_frame,
   } = app_state;
 
-  // 连接操作
+  // Connect operation
   let on_connect = move |_| {
     if connected.get() || connecting.get() {
       return;
@@ -35,38 +35,38 @@ pub fn ConnectButtons() -> impl IntoView {
       let shared_ble = match get_global_ble() {
         Some(ble) => ble,
         None => {
-          log_error("BLE 服务未初始化".to_string());
+          log_error("BLE service not initialized".to_string());
           connecting.set(false);
           return;
         }
       };
 
-      // 克隆出来执行异步连接
+      // Clone for async connection
       let mut ble_clone = shared_ble.0.borrow().clone();
 
-      // 设置数据接收回调：解析帧并分发到 last_frame 信号
+      // Set data receive callback: parse frame and dispatch to last_frame signal
       ble_clone.set_on_data(move |data| {
         log::debug!("RX raw: {}", to_hex(&data));
-        // 记录原始接收日志
+        // Record raw receive log
         log_rx("RX".to_string(), Some(data.clone()));
 
-        // 解析帧
+        // Parse frame
         if let Some((cmd, payload)) = parse_frame(&data) {
           log::info!("RX frame: cmd=0x{:02x}, payload={}", cmd, to_hex(&payload));
-          // 分发到全局信号
+          // Dispatch to global signal
           last_frame.set(Some(ReceivedFrame { cmd, payload }));
         } else {
-          log::warn!("无法解析帧: {}", to_hex(&data));
+          log::warn!("Failed to parse frame: {}", to_hex(&data));
         }
       });
 
-      // 设置状态变化回调
+      // Set state change callback
       ble_clone.set_on_state_change(move |state| match state {
         BleConnectionState::Disconnected => {
           connected.set(false);
           connecting.set(false);
           device_name.set(None);
-          log_info("设备已断开连接".to_string());
+          log_info("Device disconnected".to_string());
         }
         BleConnectionState::Connecting => {
           connecting.set(true);
@@ -78,33 +78,33 @@ pub fn ConnectButtons() -> impl IntoView {
         }
       });
 
-      // 执行连接
+      // Execute connection
       let result = ble_clone.connect().await;
 
       match result {
         Ok(()) => {
-          // 连接成功，将修改后的 ble_clone 写回共享状态
+          // Connection successful, write modified ble_clone back to shared state
           let name = ble_clone.device_name();
           device_name.set(name.clone());
 
-          // 写回共享状态（包含 rx_char/tx_char 等）
+          // Write back shared state (including rx_char/tx_char, etc.)
           *shared_ble.0.borrow_mut() = ble_clone;
 
           log_info(format!(
-            "已连接: {}",
-            name.unwrap_or_else(|| "未知设备".to_string())
+            "Connected: {}",
+            name.unwrap_or_else(|| "Unknown device".to_string())
           ));
         }
         Err(e) => {
-          log::error!("连接失败: {e}");
+          log::error!("Connection failed: {e}");
           connecting.set(false);
-          log_error(format!("连接失败: {e}"));
+          log_error(format!("Connection failed: {e}"));
         }
       }
     });
   };
 
-  // 断开操作
+  // Disconnect operation
   let on_disconnect = move |_| {
     if !connected.get() {
       return;
@@ -123,9 +123,9 @@ pub fn ConnectButtons() -> impl IntoView {
       >
           {move || {
               if connecting.get() {
-                  "连接中..."
+                  "Connecting..."
               } else {
-                  "连接 micro:bit"
+                  "Connect micro:bit"
               }
           }}
       </button>
@@ -134,7 +134,7 @@ pub fn ConnectButtons() -> impl IntoView {
           disabled=move || !connected.get()
           on:click=on_disconnect
       >
-          "断开"
+          "Disconnect"
       </button>
   }
 }

@@ -1,111 +1,158 @@
 # micro:bit V2 BLE Web Demo
 
-基于 Web Bluetooth API 的 micro:bit V2 蓝牙控制台演示项目。
+A Web Bluetooth console demo project for micro:bit V2, built with Leptos v0.8 and Web Bluetooth API.
 
-## 项目结构
+## Project Structure
 
 ```
 microbit-ble-web-demo/
-├── index.html          # Web Bluetooth 控制台页面
-├── web-server/        # Rust 静态文件服务器
+├── index.html          # Main web page (Leptos WASM entry point)
+├── web-server/        # Rust static file server
 │   ├── Cargo.toml
 │   └── src/
 │       └── main.rs
-├── README.md
-└── .gitignore
+├── src/               # Leptos frontend source (WASM)
+│   ├── lib.rs         # App entry point and routing
+│   ├── context.rs     # Global shared state (Rc<RefCell<>>)
+│   ├── utils.rs       # Protocol constants, CRC, frame encode/decode
+│   ├── components/    # UI components
+│   │   ├── mod.rs
+│   │   ├── connect_buttons.rs  # Connect/Disconnect buttons
+│   │   ├── status_indicator.rs # Connection status indicator
+│   │   ├── comm_log.rs         # TX/RX communication log
+│   │   ├── echo_panel.rs       # Echo loopback test panel
+│   │   ├── led_matrix.rs       # LED 5x5 matrix editor
+│   │   └── sensor_panel.rs     # Temperature + button events
+│   └── services/      # External service modules
+│       ├── mod.rs
+│       └── ble.rs     # Web Bluetooth API bindings
+├── Cargo.toml
+├── Makefile.toml      # cargo-make task definitions
+├── Trunk.toml         # Trunk WASM build configuration
+└── README.md
 ```
 
-## 功能特性
+## Features
 
-- 🔵 **Web Bluetooth** - 通过浏览器直接连接 micro:bit
-- 📊 **LED 矩阵控制** - 可视化 5×5 LED 矩阵编辑器
-- 🌡️ **温度传感器** - 读取 micro:bit 芯片温度
-- 🔘 **按键事件** - 订阅并实时显示按键 A/B 状态
-- 🔁 **Echo 回环测试** - 验证数据通信
-- 📝 **通信日志** - 实时显示 TX/RX 数据帧
+- 🔵 **Web Bluetooth** - Connect to micro:bit directly from the browser
+- 📊 **LED Matrix Control** - Visual 5x5 LED matrix editor
+- 🌡️ **Temperature Sensor** - Read micro:bit chip temperature
+- 🔘 **Button Events** - Subscribe to and display button A/B status in real-time
+- 🔁 **Echo Loopback Test** - Verify data communication
+- 📝 **Communication Log** - Real-time display of TX/RX data frames
 
-## 使用方法
+## Prerequisites
 
-### 1. 使用 cargo-make 启动 Web 服务器（推荐）
+### 1. Install Toolchain
 
 ```bash
-# 安装 cargo-make（如果尚未安装）
+# Install Rust and wasm32 target
+rustup target add wasm32-unknown-unknown
+
+# Install Trunk (WASM web application bundler)
+cargo install trunk
+
+# Install cargo-make (task runner, optional but recommended)
+cargo install cargo-make
+```
+
+### 2. Flash micro:bit Firmware
+
+Ensure your micro:bit V2 has BLE firmware flashed (e.g., the [microbit-ble](../microbit-ble) project).
+
+## Usage
+
+### 1. Using cargo-make (Recommended)
+
+```bash
+# Install cargo-make (if not already installed)
 cargo install cargo-make
 
-# 编译并启动服务器（默认 http://127.0.0.1:8080）
+# Build WASM frontend and start server (default http://127.0.0.1:8080)
 cargo make serve
 
-# 仅编译 Release 版本
+# Build release version only
 cargo make build
 
-# 仅编译 Debug 版本
+# Build debug version only
 cargo make build-debug
 
-# 清理构建产物
+# Clean build artifacts
 cargo make clean
 
-# 代码格式化
+# Format code
 cargo make fmt
 
-# 运行 Clippy 静态分析
+# Run Clippy static analysis
 cargo make clippy
 ```
 
-### 2. 使用 Cargo 直接启动 Web 服务器
+### 2. Using Cargo Directly
 
 ```bash
-# 进入 web-server 目录
+# Navigate to web-server directory
 cd web-server
 
-# 编译并运行（默认 http://127.0.0.1:8080）
+# Build and run (default http://127.0.0.1:8080)
 cargo run --release
 
-# 自定义端口
+# Custom port
 PORT=9000 cargo run
 
-# 自定义静态文件目录
+# Custom static file directory
 WEB_ROOT=/path/to/web cargo run
 ```
 
-### 2. 连接 micro:bit
+### 3. Connect to micro:bit
 
-1. 确保 micro:bit V2 已烧录支持 BLE 的固件（如 [microbit-ble](../microbit-ble) 项目）
-2. 在浏览器中打开 `http://127.0.0.1:8080`
-3. 点击「连接 micro:bit」按钮
-4. 在弹出的设备选择对话框中选择你的 micro:bit
-5. 连接成功后即可使用各项功能
+1. Ensure micro:bit V2 has BLE firmware flashed (e.g., [microbit-ble](../microbit-ble) project)
+2. Open `http://127.0.0.1:8080` in your browser
+3. Click the "Connect micro:bit" button
+4. Select your micro:bit from the device selection dialog
+5. After successful connection, all features become available
 
-### 3. 浏览器要求
+### 4. Browser Requirements
 
-Web Bluetooth API 需要以下环境：
-- **桌面端**: Chrome 56+, Edge 79+, Opera 43+
+Web Bluetooth API requires the following environment:
+- **Desktop**: Chrome 56+, Edge 79+, Opera 43+
 - **Android**: Chrome 56+
-- **不支持**: Safari, Firefox, iOS 浏览器
+- **Not supported**: Safari, Firefox, iOS browsers
 
-> ⚠️ 必须通过 `localhost` 或 HTTPS 访问，不能直接用 `file://` 打开。
+> ⚠️ Must be accessed via `localhost` or HTTPS, cannot be opened directly via `file://`.
 
-## 协议说明
+## Protocol
 
-Web 控制台与 micro:bit 固件使用相同的二进制协议通信：
+The web console communicates with the micro:bit firmware using the same binary protocol:
 
-| 命令 | 值 | 说明 |
-|------|-----|------|
-| PING | 0x01 | 心跳测试 |
-| LED_SET | 0x02 | 设置 LED 矩阵 |
-| LED_CLEAR | 0x03 | 清空 LED 矩阵 |
-| LED_CHAR | 0x04 | 显示字符 |
-| TEMP_GET | 0x05 | 读取温度 |
-| BTN_SUBSCRIBE | 0x06 | 订阅按键事件 |
-| ECHO | 0x07 | 回显测试 |
+| Command | Value | Description |
+|---------|-------|-------------|
+| PING | 0x01 | Heartbeat test |
+| LED_SET | 0x02 | Set LED matrix |
+| LED_CLEAR | 0x03 | Clear LED matrix |
+| LED_CHAR | 0x04 | Display character |
+| TEMP_GET | 0x05 | Read temperature |
+| BTN_SUBSCRIBE | 0x06 | Subscribe to button events |
+| ECHO | 0x07 | Echo test |
 
-帧格式：`[SOF(0xAA), CMD, LEN, ...payload, CRC]`
+Frame format: `[SOF(0xAA), CMD, LEN, ...payload, CRC]`
 
-CRC-8 算法：`poly 0x07, init 0x00`
+CRC-8 algorithm: `poly 0x07, init 0x00`
 
-## 相关项目
+The protocol implementation is shared between the firmware (`microbit-ble/src/ble/protocol.rs`) and the web frontend (`microbit-ble-web-demo/src/utils.rs`).
 
-- [microbit-ble](../microbit-ble) - micro:bit V2 BLE 固件（Rust + Embassy）
+## Related Projects
 
-## 许可证
+- [microbit-ble](../microbit-ble) - micro:bit V2 BLE firmware (Rust + Embassy)
+
+## Tech Stack
+
+| Component | Description |
+|-----------|-------------|
+| Leptos v0.8 | Rust web framework (WASM) |
+| Trunk | WASM web application bundler |
+| Web Bluetooth API | Browser Bluetooth communication |
+| cargo-make | Task runner |
+
+## License
 
 MIT

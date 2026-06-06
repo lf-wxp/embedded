@@ -1,16 +1,16 @@
 # =============================================================================
-# micro:bit V2 BLE 项目 - cargo-make 任务配置
+# micro:bit V2 BLE Project - cargo-make task configuration
 #
-# 使用方法:
-#   cargo make flash        - 一键完成: 烧录 SoftDevice + 编译并烧录应用 + 复位运行
-#   cargo make run          - 编译烧录并监控 defmt 日志输出 (用于调试)
-#   cargo make flash-sd     - 仅烧录 SoftDevice S113
-#   cargo make flash-app    - 仅编译并烧录应用程序
-#   cargo make erase        - 完全擦除芯片
-#   cargo make reset        - 复位芯片
-#   cargo make check        - 检查代码编译
-#   cargo make fmt          - 格式化代码
-#   cargo make clippy       - 运行 Clippy 静态分析
+# Usage:
+#   cargo make flash        - One-click: Flash SoftDevice + compile & flash app + reset
+#   cargo make run          - Compile, flash, and monitor defmt log output (for debugging)
+#   cargo make flash-sd     - Flash SoftDevice S113 only
+#   cargo make flash-app    - Compile and flash application only
+#   cargo make erase        - Fully erase chip
+#   cargo make reset        - Reset chip
+#   cargo make check        - Check code compilation
+#   cargo make fmt          - Format code
+#   cargo make clippy       - Run Clippy static analysis
 # =============================================================================
 
 [env]
@@ -19,23 +19,23 @@ SOFTDEVICE_HEX = "softdevice/s113_nrf52_7.3.0_softdevice.hex"
 TARGET = "thumbv7em-none-eabihf"
 
 # =============================================================================
-# 默认任务: 一键烧录全部
+# Default task: one-click flash all
 # =============================================================================
 [tasks.default]
 alias = "flash"
 
 # =============================================================================
-# flash - 完整流程: 烧录 SoftDevice + 编译并烧录应用 + 复位运行
+# flash - Full flow: flash SoftDevice + compile & flash app + reset
 # =============================================================================
 [tasks.flash]
-description = "一键完成: 烧录 SoftDevice + 编译并烧录应用程序 + 复位芯片"
+description = "One-click: Flash SoftDevice + compile & flash application + reset chip"
 dependencies = ["flash-sd", "flash-app", "reset"]
 
 # =============================================================================
-# flash-sd - 烧录 SoftDevice S113 协议栈
+# flash-sd - Flash SoftDevice S113 protocol stack
 # =============================================================================
 [tasks.flash-sd]
-description = "烧录 SoftDevice S113 v7.3.0 到芯片"
+description = "Flash SoftDevice S113 v7.3.0 to chip"
 command = "probe-rs"
 args = ["download", "--chip", "${CHIP}", "--binary-format", "ihex", "${SOFTDEVICE_HEX}"]
 
@@ -43,132 +43,130 @@ args = ["download", "--chip", "${CHIP}", "--binary-format", "ihex", "${SOFTDEVIC
 files_exist = ["${SOFTDEVICE_HEX}"]
 
 # =============================================================================
-# flash-app - 编译并烧录应用程序
+# flash-app - Compile and flash application
 # =============================================================================
 [tasks.flash-app]
-description = "编译并烧录应用程序 (Release 模式)"
+description = "Compile and flash application (Release mode)"
 dependencies = ["build"]
 command = "probe-rs"
 args = ["download", "--chip", "${CHIP}", "target/${TARGET}/release/microbit-ble"]
 
 # =============================================================================
-# flash-app-debug - 编译并烧录应用程序 (Debug 模式)
+# flash-app-debug - Compile and flash application (Debug mode)
 # =============================================================================
 [tasks.flash-app-debug]
-description = "编译并烧录应用程序 (Debug 模式)"
+description = "Compile and flash application (Debug mode)"
 dependencies = ["build-debug"]
 command = "probe-rs"
 args = ["download", "--chip", "${CHIP}", "target/${TARGET}/debug/microbit-ble"]
 
 # =============================================================================
-# erase - 完全擦除芯片 (包括 SoftDevice)
+# erase - Fully erase chip (including SoftDevice)
 # =============================================================================
 [tasks.erase]
-description = "完全擦除芯片 Flash (包括 SoftDevice)"
+description = "Fully erase chip Flash (including SoftDevice)"
 command = "probe-rs"
 args = ["erase", "--chip", "${CHIP}"]
 
 # =============================================================================
-# reset - 复位芯片
+# reset - Reset chip
 # =============================================================================
 [tasks.reset]
-description = "复位芯片"
+description = "Reset chip"
 command = "probe-rs"
 args = ["reset", "--chip", "${CHIP}"]
 
 # =============================================================================
-# check - 检查代码编译
+# check - Check code compilation
 # =============================================================================
 [tasks.check]
-description = "检查代码是否能正确编译"
+description = "Check if code compiles correctly"
 command = "cargo"
 args = ["check"]
 
 # =============================================================================
-# fmt - 格式化代码
+# fmt - Format code
 # =============================================================================
 [tasks.fmt]
-description = "使用 rustfmt 格式化代码"
+description = "Format code using rustfmt"
 command = "cargo"
 args = ["fmt"]
 
 # =============================================================================
-# fmt-check - 检查代码格式 (不修改文件)
+# fmt-check - Check code format (without modifying files)
 # =============================================================================
 [tasks.fmt-check]
-description = "检查代码格式是否符合规范 (不修改文件)"
+description = "Check code format compliance (without modifying files)"
 command = "cargo"
 args = ["fmt", "--", "--check"]
 
 # =============================================================================
-# clippy - 运行 Clippy 静态分析
+# clippy - Run Clippy static analysis
 # =============================================================================
 [tasks.clippy]
-description = "运行 Clippy 静态分析检查"
+description = "Run Clippy static analysis checks"
 command = "cargo"
 args = ["clippy", "--", "-D", "warnings"]
 
 # =============================================================================
-# build - 编译 Release 固件 (不烧录)
+# build - Compile Release firmware (without flashing)
 # =============================================================================
 [tasks.build]
-description = "编译 Release 固件 (不烧录)"
+description = "Compile Release firmware (without flashing)"
 command = "cargo"
 args = ["build", "--release"]
 
 # =============================================================================
-# build-debug - 编译 Debug 固件 (不烧录)
+# build-debug - Compile Debug firmware (without flashing)
 # =============================================================================
 [tasks.build-debug]
-description = "编译 Debug 固件 (不烧录)"
+description = "Compile Debug firmware (without flashing)"
 command = "cargo"
 args = ["build"]
 
 # =============================================================================
-# clean - 清理构建产物
+# clean - Clean build artifacts
 # =============================================================================
 [tasks.clean]
-description = "清理构建产物"
+description = "Clean build artifacts"
 command = "cargo"
 args = ["clean"]
 
 # =============================================================================
-# run - 编译烧录并监控 defmt 日志输出 (用于调试)
+# run - Compile, flash, and monitor defmt log output (for debugging)
 # =============================================================================
 [tasks.run]
-description = "编译并烧录应用程序，复位后监控 defmt 日志输出 (用于调试)"
+description = "Compile and flash application, then monitor defmt log output after reset (for debugging)"
 dependencies = ["flash-sd", "build"]
 script_runner = "@shell"
 script = '''
-echo ">>> 烧录应用程序..."
+echo ">>> Flashing application..."
 probe-rs download --chip ${CHIP} target/${TARGET}/release/microbit-ble
-echo ">>> 复位芯片 (从 MBR/SoftDevice 正常启动)..."
+echo ">>> Resetting chip (normal boot from MBR/SoftDevice)..."
 probe-rs reset --chip ${CHIP}
-echo ">>> 连接 RTT 日志 (按 Ctrl+C 退出)..."
+echo ">>> Attaching RTT logger (Press Ctrl+C to exit)..."
 probe-rs attach --chip ${CHIP} --rtt-scan-memory target/${TARGET}/release/microbit-ble
 '''
 
 # =============================================================================
-# run-debug - Debug 模式编译烧录并监控日志
+# run-debug - Debug mode: compile, flash, and monitor logs
 # =============================================================================
 [tasks.run-debug]
-description = "Debug 模式编译并烧录，复位后监控 defmt 日志输出"
+description = "Debug mode: compile and flash, then monitor defmt log output after reset"
 dependencies = ["flash-sd", "build-debug"]
 script_runner = "@shell"
 script = '''
-echo ">>> 烧录应用程序 (Debug)..."
+echo ">>> Flashing application (Debug)..."
 probe-rs download --chip ${CHIP} target/${TARGET}/debug/microbit-ble
-echo ">>> 复位芯片 (从 MBR/SoftDevice 正常启动)..."
+echo ">>> Resetting chip (normal boot from MBR/SoftDevice)..."
 probe-rs reset --chip ${CHIP}
-echo ">>> 连接 RTT 日志 (按 Ctrl+C 退出)..."
+echo ">>> Attaching RTT logger (Press Ctrl+C to exit)..."
 probe-rs attach --chip ${CHIP} --rtt-scan-memory target/${TARGET}/debug/microbit-ble
 '''
 
 # =============================================================================
-# init - 完整初始化:  擦除芯片 + 烧录全部
+# init - Full initialization: erase chip + flash everything
 # =============================================================================
 [tasks.init]
-description = "完整初始化: 擦除芯片 + 烧录全部"
+description = "Full initialization: erase chip + flash everything"
 dependencies = ["erase", "flash"]
-
-

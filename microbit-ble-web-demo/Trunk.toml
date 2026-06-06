@@ -1,81 +1,81 @@
-# Trunk 配置文件
+# Trunk configuration file
 # https://trunkrs.dev/configuration/
 
-# Trunk 版本要求
+# Trunk version requirement
 trunk-version = "*"
 
 [build]
-# 入口 HTML 文件
+# Entry HTML file
 target = "index.html"
-# Release 模式
+# Release mode
 release = false
-# 输出目录
+# Output directory
 dist = "./dist"
-# 公共 URL 路径
+# Public URL path
 public_url = "/"
-# 文件名包含哈希值
+# Filenames include hash
 filehash = true
-# 注入脚本
+# Inject scripts
 inject_scripts = true
-# 离线模式
+# Offline mode
 offline = false
-# 冻结依赖
+# Freeze dependencies
 frozen = false
-# 锁定依赖
+# Lock dependencies
 locked = false
-# 压缩策略: never, on_release, always
+# Minification strategy: never, on_release, always
 minify = "never"
-# 禁用子资源完整性
+# Disable subresource integrity
 no_sri = false
 # Cargo profile
 # cargo_profile = "release-trunk"
-# 注入 nonce 属性
+# Inject nonce attribute
 create_nonce = false
 
 [watch]
-# 监听路径（build.target 的父目录默认被监听）
+# Watch paths (parent dir of build.target is watched by default)
 watch = []
-# 忽略路径
+# Ignore paths
 ignore = []
 
 [serve]
-# 服务地址
+# Server address
 addresses = ["127.0.0.1"]
-# 服务端口
+# Server port
 port = 8080
-# 禁用反向 DNS 查找
+# Disable reverse DNS lookup
 disable_address_lookup = false
-# 构建完成后打开浏览器
+# Open browser after build
 open = false
-# 禁用 SPA 回退
+# Disable SPA fallback
 no_spa = false
-# 禁用自动重载
+# Disable auto-reload
 no_autoreload = false
-# 禁用错误报告
+# Disable error reporting
 no_error_reporting = false
-# WebSocket 协议
+# WebSocket protocol
 ws_protocol = "ws"
-# TLS 证书和私钥（两者都设置时启用 TLS）
+# TLS certificate and private key (enable TLS when both are set)
 # tls_cert_path = "self_signed_certs/cert.pem"
 # tls_key_path = "self_signed_certs/key.pem"
-# 额外响应头
+# Extra response headers
 # headers = { "X-Foo" = "bar" }
 
 [clean]
-# 是否执行 cargo clean
+# Whether to run cargo clean
 cargo = false
 
 [tools]
-# sass 版本
+# sass version
 sass = "1.69.5"
-# wasm-bindgen 版本
+# wasm-bindgen version
 
-## 代理设置（可选，默认为 None）
+## Proxy settings (optional, default is None)
 # [[proxy]]
 # backend = "ws://localhost:9000/api/ws"
 # ws = true
 
-## 构建钩子（可选，默认为 None）
+## Build hooks (optional, default is None)
 # [[hooks]]
 # stage = "pre_build"
 # command = "echo"

@@ -1,18 +1,18 @@
-# SoftDevice 固件目录
+# SoftDevice Firmware Directory
 
-请将 Nordic SoftDevice S113 v7.3.0 的 hex 文件放置在此目录下。
+Place the Nordic SoftDevice S113 v7.3.0 hex file in this directory.
 
-## 文件名
+## Filename
 
 ```
 s113_nrf52_7.3.0_softdevice.hex
 ```
 
-## 获取方式
+## How to Obtain
 
-1. **自动下载**: 运行 `cargo make setup` 会自动从 Nordic 官网下载
-2. **手动下载**: 访问 https://www.nordicsemi.com/Software-and-tools/Software/S113/Download
+1. **Automatic download**: Run `cargo make setup` to automatically download from Nordic's official website
+2. **Manual download**: Visit https://www.nordicsemi.com/Software-and-tools/Software/S113/Download
 
-## 注意
+## Notes
 
-- 此目录下的 `.hex` 文件不应提交到 Git（已在 .gitignore 中排除）
+- The `.hex` file in this directory should not be committed to Git (excluded in .gitignore)

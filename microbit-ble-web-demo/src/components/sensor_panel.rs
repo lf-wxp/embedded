@@ -1,6 +1,6 @@
-//! 传感器面板组件
-//! 显示板载温度传感器读数和按键状态
-//! 通过 BLE 发送命令并监听响应
+//! Sensor panel component
+//! Displays onboard temperature sensor readings and button status
+//! Sends commands via BLE and listens for responses
 
 use crate::components::comm_log::{log_error, log_tx};
 use crate::context::{get_global_ble, AppState};
@@ -8,55 +8,55 @@ use crate::utils::{build_frame, Command};
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-/// 通过全局 BLE 服务发送数据帧
+/// Send data frame via global BLE service
 fn ble_send_frame(frame: Vec<u8>) {
   spawn_local(async move {
     if let Some(shared_ble) = get_global_ble() {
       let ble = shared_ble.0.borrow().clone();
       if let Err(e) = ble.send(&frame).await {
-        log_error(format!("发送失败: {e}"));
+        log_error(format!("Send failed: {e}"));
       }
     }
   });
 }
 
-/// SensorPanel 组件
+/// SensorPanel component
 #[component]
 pub fn SensorPanel() -> impl IntoView {
   let app_state = expect_context::<AppState>();
   let connected = app_state.connected;
   let last_frame = app_state.last_frame;
 
-  // 传感器数据状态
+  // Sensor data state
   let (temperature, set_temperature) = signal("--".to_string());
   let (button_a, set_button_a) = signal(false);
   let (button_b, set_button_b) = signal(false);
   let (btn_subscribed, set_btn_subscribed) = signal(false);
   let (updating, set_updating) = signal(false);
 
-  // 监听接收到的帧，处理温度响应和按键事件
+  // Listen for received frames, handle temperature response and button events
   Effect::new(move |_| {
     if let Some(frame) = last_frame.get() {
       match frame.cmd {
-        // Pong 响应 (0x81)
+        // Pong response (0x81)
         cmd if cmd == Command::Pong as u8 => {
-          log::info!("收到 Pong 响应");
+          log::info!("Received Pong response");
         }
-        // 温度响应 (0x85)
+        // Temperature response (0x85)
         cmd if cmd == Command::TempResp as u8 => {
           if frame.payload.len() >= 2 {
-            // 温度值为 i16，单位 0.01°C
+            // Temperature value is i16, unit 0.01°C
             let raw = i16::from_le_bytes([frame.payload[0], frame.payload[1]]);
             let temp = f32::from(raw) / 100.0;
             set_temperature.set(format!("{temp:.1}°C"));
           } else if !frame.payload.is_empty() {
-            // 单字节温度（整数）
+            // Single-byte temperature (integer)
             let temp = frame.payload[0] as i8;
             set_temperature.set(format!("{temp}°C"));
           }
           set_updating.set(false);
         }
-        // 按键事件 (0x90)
+        // Button event (0x90)
         cmd if cmd == Command::BtnEvent as u8 && frame.payload.len() >= 2 => {
           let btn_id = frame.payload[0];
           let pressed = frame.payload[1] != 0;
@@ -81,11 +81,11 @@ pub fn SensorPanel() -> impl IntoView {
         log_tx("Ping".to_string(), Some(frame.clone()));
         ble_send_frame(frame);
       }
-      Err(e) => log_error(format!("构建帧失败: {e}")),
+      Err(e) => log_error(format!("Build frame failed: {e}")),
     }
   };
 
-  // 请求温度读取
+  // Request temperature reading
   let request_temperature = move |_| {
     if !connected.get() || updating.get() {
       return;
@@ -97,13 +97,13 @@ pub fn SensorPanel() -> impl IntoView {
         ble_send_frame(frame);
       }
       Err(e) => {
-        log_error(format!("构建帧失败: {e}"));
+        log_error(format!("Build frame failed: {e}"));
         set_updating.set(false);
       }
     }
   };
 
-  // 订阅/取消订阅按键状态
+  // Subscribe/unsubscribe button status
   let toggle_btn_subscribe = move |_| {
     if !connected.get() {
       return;
@@ -119,11 +119,11 @@ pub fn SensorPanel() -> impl IntoView {
         set_btn_subscribed.set(new_state);
         ble_send_frame(frame);
       }
-      Err(e) => log_error(format!("构建帧失败: {e}")),
+      Err(e) => log_error(format!("Build frame failed: {e}")),
     }
   };
 
-  // 按键状态显示
+  // Button state display
   let btn_a_class = move || {
     let mut cls = "btn-state".to_string();
     if button_a.get() {
@@ -141,13 +141,13 @@ pub fn SensorPanel() -> impl IntoView {
 
   view! {
       <section class="card">
-          <h2>"板载状态"</h2>
+          <h2>"Onboard Status"</h2>
           <div class="row">
               <button disabled=move || !connected.get() on:click=on_ping>"🏓 Ping"</button>
               <button disabled=move || !connected.get() || updating.get() on:click=request_temperature>
-                  {move || if updating.get() { "🌡 读取中..." } else { "🌡 读取温度" }}
+                  {move || if updating.get() { "🌡 Reading..." } else { "🌡 Read Temperature" }}
               </button>
-              <span class="stat">{move || format!("温度: {}", temperature.get())}</span>
+              <span class="stat">{move || format!("Temp: {}", temperature.get())}</span>
           </div>
           <div class="row" style="margin-top: 14px;">
               <label>
@@ -157,14 +157,14 @@ pub fn SensorPanel() -> impl IntoView {
                       checked=move || btn_subscribed.get()
                       on:change=toggle_btn_subscribe
                   />
-                  " 订阅按键 A/B 事件"
+                  " Subscribe to Button A/B events"
               </label>
           </div>
           <div class="row">
-              <span class="stat">"A: "<span class=btn_a_class>{move || if button_a.get() { "按下" } else { "--" }}</span></span>
-              <span class="stat">"B: "<span class=btn_b_class>{move || if button_b.get() { "按下" } else { "--" }}</span></span>
+              <span class="stat">"A: "<span class=btn_a_class>{move || if button_a.get() { "Pressed" } else { "--" }}</span></span>
+              <span class="stat">"B: "<span class=btn_b_class>{move || if button_b.get() { "Pressed" } else { "--" }}</span></span>
           </div>
-          <p class="hint">"订阅后按下板载按键 A 或 B，实时显示状态。"</p>
+          <p class="hint">"Press onboard button A or B after subscribing to see real-time status."</p>
       </section>
   }
 }

@@ -1,4 +1,4 @@
-//! LED 5×5 矩阵控制组件
+//! LED 5×5 matrix control component
 
 use crate::components::comm_log::{log_error, log_tx};
 use crate::context::{get_global_ble, AppState};
@@ -6,38 +6,38 @@ use crate::utils::{build_frame, Command};
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-/// 通过全局 BLE 服务发送数据帧的辅助函数
+/// Helper function to send data frame via global BLE service
 fn ble_send_frame(frame: Vec<u8>) {
   spawn_local(async move {
     if let Some(shared_ble) = get_global_ble() {
       let ble = shared_ble.0.borrow().clone();
       if let Err(e) = ble.send(&frame).await {
-        log_error(format!("发送失败: {e}"));
+        log_error(format!("Send failed: {e}"));
       }
     } else {
-      log_error("BLE 服务未初始化".to_string());
+      log_error("BLE service not initialized".to_string());
     }
   });
 }
 
-/// LED 矩阵卡片组件
+/// LED matrix card component
 #[component]
 pub fn LedMatrixCard() -> impl IntoView {
-  // 从上下文获取连接状态
+  // Get connection state from context
   let app_state = expect_context::<AppState>();
   let connected = app_state.connected;
 
-  // LED 状态：25 个 LED 的开关状态
+  // LED state: on/off state of 25 LEDs
   let (led_state, set_led_state) = signal([false; 25]);
 
-  // 切换单个 LED
+  // Toggle a single LED
   let toggle_led = move |index: usize| {
     let mut new_state = led_state.get();
     new_state[index] = !new_state[index];
     set_led_state.set(new_state);
   };
 
-  // 发送 LED 状态到设备
+  // Send LED state to device
   let send_led = move |_| {
     if !connected.get() {
       return;
@@ -49,11 +49,11 @@ pub fn LedMatrixCard() -> impl IntoView {
         log_tx("LED Set".to_string(), Some(frame.clone()));
         ble_send_frame(frame);
       }
-      Err(e) => log_error(format!("构建帧失败: {e}")),
+      Err(e) => log_error(format!("Build frame failed: {e}")),
     }
   };
 
-  // 清空 LED
+  // Clear all LEDs
   let clear_led = move |_| {
     set_led_state.set([false; 25]);
     if connected.get() {
@@ -62,12 +62,12 @@ pub fn LedMatrixCard() -> impl IntoView {
           log_tx("LED Clear".to_string(), Some(frame.clone()));
           ble_send_frame(frame);
         }
-        Err(e) => log_error(format!("构建帧失败: {e}")),
+        Err(e) => log_error(format!("Build frame failed: {e}")),
       }
     }
   };
 
-  // 全部点亮
+  // Turn on all LEDs
   let all_led = move |_| {
     set_led_state.set([true; 25]);
     if connected.get() {
@@ -77,12 +77,12 @@ pub fn LedMatrixCard() -> impl IntoView {
           log_tx("LED All On".to_string(), Some(frame.clone()));
           ble_send_frame(frame);
         }
-        Err(e) => log_error(format!("构建帧失败: {e}")),
+        Err(e) => log_error(format!("Build frame failed: {e}")),
       }
     }
   };
 
-  // 显示字符
+  // Display a character
   let (char_input, set_char_input) = signal(String::new());
   let send_char = move |_| {
     let ch = char_input.get();
@@ -93,7 +93,7 @@ pub fn LedMatrixCard() -> impl IntoView {
             log_tx(format!("LED Char '{c}'"), Some(frame.clone()));
             ble_send_frame(frame);
           }
-          Err(e) => log_error(format!("构建帧失败: {e}")),
+          Err(e) => log_error(format!("Build frame failed: {e}")),
         }
       }
     }
@@ -101,9 +101,9 @@ pub fn LedMatrixCard() -> impl IntoView {
 
   view! {
       <section class="card">
-          <h2>"LED 5×5 矩阵"</h2>
+          <h2>"LED 5×5 Matrix"</h2>
 
-          // 5x5 LED 网格
+          // 5x5 LED grid
           <div class="led-grid">
               <For
                   each=move || 0..25
@@ -140,33 +140,33 @@ pub fn LedMatrixCard() -> impl IntoView {
               />
           </div>
 
-          // 控制按钮
+          // Control buttons
           <div class="row">
               <button
                   disabled=move || !connected.get()
                   on:click=send_led
               >
-                  "📤 应用到设备"
+                  "📤 Apply to Device"
               </button>
               <button
                   disabled=move || !connected.get()
                   on:click=clear_led
               >
-                  "清空"
+                  "Clear"
               </button>
               <button
                   disabled=move || !connected.get()
                   on:click=all_led
               >
-                  "全亮"
+                  "All On"
               </button>
           </div>
 
-          // 字符输入
+          // Character input
           <div class="row">
               <input
                   type="text"
-                  placeholder="单个字符 (A-Z 0-9 ! ?)"
+                  placeholder="Single character (A-Z 0-9 ! ?)"
                   maxlength="1"
                   on:input=move |ev| {
                       set_char_input.set(event_target_value(&ev));
@@ -176,11 +176,11 @@ pub fn LedMatrixCard() -> impl IntoView {
                   disabled=move || !connected.get() || char_input.get().is_empty()
                   on:click=send_char
               >
-                  "显示字符"
+                  "Display Char"
               </button>
           </div>
 
-          <p class="hint">"点击格子切换亮/灭，再按「应用」通过 BLE 写入设备。"</p>
+          <p class="hint">"Click a cell to toggle on/off, then press 'Apply to Device' to write via BLE."</p>
       </section>
   }
 }

@@ -1,5 +1,5 @@
-//! Echo 回环测试组件
-//! 通过 BLE 发送 Echo 命令并监听响应
+//! Echo loopback test component
+//! Sends Echo command via BLE and listens for response
 
 use crate::components::comm_log::{log_error, log_tx};
 use crate::context::{get_global_ble, AppState};
@@ -7,7 +7,7 @@ use crate::utils::{build_frame, Command};
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-/// EchoPanel 组件
+/// EchoPanel component
 #[component]
 pub fn EchoPanel() -> impl IntoView {
   let app_state = expect_context::<AppState>();
@@ -18,20 +18,20 @@ pub fn EchoPanel() -> impl IntoView {
   let (echo_result, set_echo_result) = signal("--".to_string());
   let (testing, set_testing) = signal(false);
 
-  // 监听 Echo 响应
+  // Listen for Echo response
   Effect::new(move |_| {
     if let Some(frame) = last_frame.get() {
       if frame.cmd == Command::EchoResp as u8 {
-        // Echo 响应的 payload 就是原始发送的数据
+        // Echo response payload is the original sent data
         let text = String::from_utf8(frame.payload.clone())
           .unwrap_or_else(|_| format!("(hex) {}", hex::encode(&frame.payload)));
-        set_echo_result.set(format!("回显: {text}"));
+        set_echo_result.set(format!("Echo: {text}"));
         set_testing.set(false);
       }
     }
   });
 
-  // Echo 测试
+  // Echo test
   let on_echo = move |_| {
     if !connected.get() || testing.get() {
       return;
@@ -42,7 +42,7 @@ pub fn EchoPanel() -> impl IntoView {
     }
 
     set_testing.set(true);
-    set_echo_result.set("发送中...".to_string());
+    set_echo_result.set("Sending...".to_string());
 
     let payload = text.as_bytes().to_vec();
     match build_frame(Command::Echo as u8, &payload) {
@@ -52,17 +52,17 @@ pub fn EchoPanel() -> impl IntoView {
           if let Some(shared_ble) = get_global_ble() {
             let ble = shared_ble.0.borrow().clone();
             if let Err(e) = ble.send(&frame).await {
-              log_error(format!("Echo 发送失败: {e}"));
-              set_echo_result.set(format!("错误: {e}"));
+              log_error(format!("Send failed: {e}"));
+              set_echo_result.set(format!("Error: {e}"));
               set_testing.set(false);
             }
-            // 响应会通过 last_frame 信号触发 Effect 更新
+            // Response will trigger Effect update via last_frame signal
           }
         });
       }
       Err(e) => {
-        log_error(format!("构建帧失败: {e}"));
-        set_echo_result.set(format!("错误: {e}"));
+        log_error(format!("Build frame failed: {e}"));
+        set_echo_result.set(format!("Error: {e}"));
         set_testing.set(false);
       }
     }
@@ -70,11 +70,11 @@ pub fn EchoPanel() -> impl IntoView {
 
   view! {
       <section class="card">
-          <h2>"Echo 回环测试"</h2>
+          <h2>"Echo Loopback Test"</h2>
           <div class="row">
               <input
                   type="text"
-                  placeholder="输入文本（≤56 字符）"
+                  placeholder="Enter text (≤56 chars)"
                   prop:value=move || input_text.get()
                   on:input=move |ev| {
                       set_input_text.set(event_target_value(&ev));
@@ -85,7 +85,7 @@ pub fn EchoPanel() -> impl IntoView {
                   disabled=move || !connected.get() || testing.get() || input_text.get().is_empty()
                   on:click=on_echo
               >
-                  {move || if testing.get() { "发送中..." } else { "发送" }}
+                  {move || if testing.get() { "Sending..." } else { "Send" }}
               </button>
           </div>
           <div class="row">

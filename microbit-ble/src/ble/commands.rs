@@ -1,6 +1,6 @@
-//! 指令分发：解析 NUS RX 收到的二进制帧，执行对应动作并构造响应。
+//! Command dispatch: parse binary frames received on NUS RX, execute corresponding actions and construct responses.
 //!
-//! 由 BLE 主循环调用 [`handle_rx`]，输入是 RX 写入字节，输出是要通过 TX 回写的字节。
+//! Called by the BLE main loop via [`handle_rx`], input is the RX written bytes, output is the response bytes to write back via TX.
 
 use defmt::{info, warn};
 use nrf_softdevice::Softdevice;
@@ -14,7 +14,7 @@ use super::protocol::{
   ERR_BAD_CRC, ERR_BAD_FRAME, ERR_BAD_PAYLOAD, ERR_UNKNOWN_CMD, MAX_FRAME_LEN,
 };
 
-/// 处理结果：编码后的响应帧（最多一帧）
+/// Processing result: encoded response frame (at most one frame)
 pub struct Response {
   buf: [u8; MAX_FRAME_LEN],
   len: usize,
@@ -40,19 +40,19 @@ impl Response {
   }
 }
 
-/// 把按钮事件编码成一帧
+/// Encode button event into a frame
 pub fn encode_button_event(evt: buttons::ButtonEvent) -> Option<Response> {
   let payload = [evt.id as u8, evt.pressed as u8];
   Response::build(CMD_BTN_EVENT, &payload)
 }
 
-/// 处理一次 NUS RX 写入的数据，返回需要回写的响应（如果有）
+/// Process one NUS RX write, return the response to write back (if any)
 pub fn handle_rx(sd: &Softdevice, data: &[u8]) -> Option<Response> {
-  // 解析帧
+  // Parse frame
   let frame = match protocol::parse_frame(data) {
     Ok(f) => f,
     Err(e) => {
-      warn!("帧解析失败: {:?}", defmt::Debug2Format(&e));
+      warn!("Frame parse failed: {:?}", defmt::Debug2Format(&e));
       let code = match e {
         protocol::ParseError::BadCrc => ERR_BAD_CRC,
         _ => ERR_BAD_FRAME,
@@ -63,7 +63,7 @@ pub fn handle_rx(sd: &Softdevice, data: &[u8]) -> Option<Response> {
 
   match frame.cmd {
     CMD_PING => {
-      info!("收到 PING");
+      info!("PING received");
       Response::build(CMD_PONG, &[])
     }
 
@@ -72,13 +72,13 @@ pub fn handle_rx(sd: &Softdevice, data: &[u8]) -> Option<Response> {
         return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
       }
       led_matrix::set_frame_from_bytes(frame.payload);
-      info!("LED 矩阵已更新");
+      info!("LED matrix updated");
       Response::build(CMD_LED_ACK, &[0])
     }
 
     CMD_LED_CLEAR => {
       led_matrix::clear_frame();
-      info!("LED 矩阵已清空");
+      info!("LED matrix cleared");
       Response::build(CMD_LED_ACK, &[0])
     }
 
@@ -87,24 +87,24 @@ pub fn handle_rx(sd: &Softdevice, data: &[u8]) -> Option<Response> {
         return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
       }
       led_matrix::show_char(frame.payload[0]);
-      info!("LED 显示字符: {}", frame.payload[0] as char);
+      info!("LED display char: {}", frame.payload[0] as char);
       Response::build(CMD_LED_ACK, &[0])
     }
 
     CMD_TEMP_GET => {
       let payload: [u8; 4] = match temperature_celsius(sd) {
         Ok(t) => {
-          // I30F2: 整数部分 30 位 + 2 位小数（每 LSB = 0.25°C）
-          // 转换为 0.01°C 为单位的 i32（避免浮点）
-          // value_in_quarters = t.to_bits()  即 4 倍温度
+          // I30F2: 30 integer bits + 2 fractional bits (each LSB = 0.25°C)
+          // Convert to i32 in units of 0.01°C (avoid floating point)
+          // value_in_quarters = t.to_bits()  i.e. 4x temperature
           // hundredths = quarters * 25
           let quarters: i32 = t.to_bits();
           let hundredths: i32 = quarters * 25;
-          info!("温度: {} (0.01°C)", hundredths);
+          info!("Temperature: {} (0.01°C)", hundredths);
           hundredths.to_le_bytes()
         }
         Err(_) => {
-          warn!("温度读取失败");
+          warn!("Temperature read failed");
           return Response::build(CMD_ERROR, &[0xFE]);
         }
       };
@@ -125,7 +125,7 @@ pub fn handle_rx(sd: &Softdevice, data: &[u8]) -> Option<Response> {
     }
 
     other => {
-      warn!("未知指令: 0x{:02X}", other);
+      warn!("Unknown command: 0x{:02X}", other);
       Response::build(CMD_ERROR, &[ERR_UNKNOWN_CMD])
     }
   }

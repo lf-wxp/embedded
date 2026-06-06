@@ -1,19 +1,19 @@
-//! 通信日志组件
-//! 显示所有 BLE 通信的 TX/RX 数据
+//! Communication log component
+//! Displays all BLE TX/RX communication data
 
 use leptos::prelude::*;
 use std::cell::RefCell;
 
-/// 日志条目类型
+/// Log entry type
 #[derive(Clone, Debug)]
 pub enum LogEntryType {
-  Tx,    // 发送
-  Rx,    // 接收
-  Info,  // 信息
-  Error, // 错误
+  Tx,    // Transmit
+  Rx,    // Receive
+  Info,  // Information
+  Error, // Error
 }
 
-/// 日志条目
+/// Log entry
 #[derive(Clone, Debug)]
 pub struct LogEntry {
   pub timestamp: u128,
@@ -24,7 +24,7 @@ pub struct LogEntry {
 
 impl LogEntry {
   pub fn new(entry_type: LogEntryType, message: String, data: Option<Vec<u8>>) -> Self {
-    // 使用 js_sys::Date::now() 获取时间戳（WASM 不支持 std::time::SystemTime）
+    // Use js_sys::Date::now() to get timestamp (WASM doesn't support std::time::SystemTime)
     let timestamp = js_sys::Date::now() as u128;
 
     Self {
@@ -54,19 +54,19 @@ impl LogEntry {
   }
 }
 
-// 全局日志写入信号（WASM 是单线程的，使用 thread_local 安全）
+// Global log write signal (WASM is single-threaded, safe to use thread_local)
 thread_local! {
   static LOG_SIGNAL: RefCell<Option<WriteSignal<Vec<LogEntry>>>> = const { RefCell::new(None) };
 }
 
-/// 注册日志写入信号（由 CommLog 组件调用）
+/// Register log write signal (called by CommLog component)
 fn register_log_signal(set_logs: WriteSignal<Vec<LogEntry>>) {
   LOG_SIGNAL.with(|s| {
     *s.borrow_mut() = Some(set_logs);
   });
 }
 
-/// 写入日志条目（可在任何上下文中调用，包括 JS 回调）
+/// Write log entry (can be called in any context, including JS callbacks)
 fn write_log(entry: LogEntry) {
   LOG_SIGNAL.with(|s| {
     if let Some(set_logs) = *s.borrow() {
@@ -80,28 +80,28 @@ fn write_log(entry: LogEntry) {
   });
 }
 
-/// CommLog 组件
+/// CommLog component
 #[component]
 pub fn CommLog() -> impl IntoView {
   let (logs, set_logs) = signal(Vec::<LogEntry>::new());
   let (hex_only, set_hex_only) = signal(false);
 
-  // 注册全局日志写入信号
+  // Register global log write signal
   register_log_signal(set_logs);
 
-  // 清空日志
+  // Clear log
   let on_clear = move |_| {
     set_logs.set(Vec::new());
   };
 
-  // 切换 hex 模式
+  // Toggle hex mode
   let toggle_hex = move |_| {
     set_hex_only.update(|v| *v = !*v);
   };
 
   view! {
       <section class="card">
-          <h2>"通信日志"</h2>
+          <h2>"Communication Log"</h2>
           <div id="log">
               <For
                   each=move || logs.get()
@@ -128,21 +128,21 @@ pub fn CommLog() -> impl IntoView {
               />
           </div>
           <div class="row" style="margin-top: 8px;">
-              <button on:click=on_clear>"清空日志"</button>
+              <button on:click=on_clear>"Clear Log"</button>
               <label>
                   <input
                       type="checkbox"
                       checked=move || hex_only.get()
                       on:change=toggle_hex
                   />
-                  " 仅显示 hex"
+                  " Hex only"
               </label>
           </div>
       </section>
   }
 }
 
-/// 全局日志函数 - 可在任何上下文中调用（包括 BLE 回调）
+/// Global log function - can be called in any context (including BLE callbacks)
 pub fn log_tx(message: String, data: Option<Vec<u8>>) {
   write_log(LogEntry::new(LogEntryType::Tx, message, data));
 }

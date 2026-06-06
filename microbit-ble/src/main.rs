@@ -1,13 +1,14 @@
-//! micro:bit V2 BLE 外设广播示例（NUS + LED 矩阵 + 按键 + 温度）
+//! micro:bit V2 BLE peripheral advertising example (NUS + LED matrix + buttons + temperature)
 //!
-//! 通过 Nordic UART Service 与浏览器（Web Bluetooth）/ nRF Connect 双向通信。
-//! 演示功能：
-//! - 控制板载 5x5 LED 矩阵（位图 / 字符）
-//! - 上报板载按键 A/B 事件
-//! - 读取芯片内部温度
-//! - 协议帧 echo（连通性测试）
+//! Bidirectional communication with browser (Web Bluetooth) / nRF Connect via Nordic UART Service.
 //!
-//! 详见 [`crate::ble::protocol`] 模块的协议定义。
+//! Features demonstrated:
+//! - Control onboard 5x5 LED matrix (bitmap / character)
+//! - Report onboard button A/B events
+//! - Read on-chip temperature
+//! - Protocol frame echo (connectivity test)
+//!
+//! See [`crate::ble::protocol`] module for protocol definition.
 
 #![no_std]
 #![no_main]
@@ -28,21 +29,21 @@ use ble::buttons::{ButtonPins, button_task};
 use ble::led_matrix::{LedPins, led_matrix_task};
 use ble::{BleConfig, BleController};
 
-/// BLE 设备名称（显示在手机的蓝牙扫描列表中）
+/// BLE device name (shown in Bluetooth scan list)
 const DEVICE_NAME: &[u8] = b"MicroBit-BLE";
 
-/// Nordic UART Service 128-bit UUID（小端序，用于广播包）
+/// Nordic UART Service 128-bit UUID (little-endian, for advertising packet)
 const NUS_UUID_BYTES: [u8; 16] = [
   0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E,
 ];
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-  info!("=== micro:bit V2 BLE (NUS) 示例启动 ===");
+  info!("=== micro:bit V2 BLE (NUS) example started ===");
 
   // ========================================
-  // 1. 初始化 embassy-nrf 外设
-  //    GPIOTE 优先级必须低于 SoftDevice 使用的 P0/P1/P4
+  // 1. Initialize embassy-nrf peripherals
+  //    GPIOTE priority must be lower than P0/P1/P4 used by SoftDevice
   // ========================================
   let mut nrf_config = embassy_nrf::config::Config::default();
   nrf_config.gpiote_interrupt_priority = Priority::P2;
@@ -50,7 +51,7 @@ async fn main(spawner: Spawner) {
   let p = embassy_nrf::init(nrf_config);
 
   // ========================================
-  // 2. 启动 LED 矩阵刷新任务
+  // 2. Start LED matrix refresh task
   // ========================================
   spawner.spawn(led_matrix_task(LedPins {
     row1: p.P0_21,
@@ -63,24 +64,24 @@ async fn main(spawner: Spawner) {
     col3: p.P0_31,
     col4: p.P1_05,
     col5: p.P0_30,
-  }).expect("led_matrix_task spawn 失败"));
+  }).expect("led_matrix_task spawn failed"));
 
-  // 启动时显示一个图标，提示固件已运行
+  // Show an icon on startup to indicate firmware is running
   ble::led_matrix::show_char(b'B');
 
   // ========================================
-  // 3. 启动按键监听任务
+  // 3. Start button monitoring task
   // ========================================
   spawner.spawn(
     button_task(ButtonPins {
       btn_a: p.P0_14,
       btn_b: p.P0_23,
     })
-    .expect("button_task spawn 失败"),
+    .expect("button_task spawn failed"),
   );
 
   // ========================================
-  // 4. 初始化 BLE 控制器（启用 SoftDevice）
+  // 4. Initialize BLE controller (enable SoftDevice)
   // ========================================
   let config = BleConfig {
     device_name: DEVICE_NAME,
@@ -88,32 +89,32 @@ async fn main(spawner: Spawner) {
   };
   let ble = BleController::enable(&spawner, &config);
   info!(
-    "BLE 已初始化，设备名: {}",
+    "BLE initialized, device name: {}",
     core::str::from_utf8(DEVICE_NAME).unwrap_or("?")
   );
 
   // ========================================
-  // 5. 构建广播数据
+  // 5. Build advertising data
   // ========================================
-  // Web Bluetooth 要求服务 UUID 必须出现在广播包（adv_data）中才能被 filter 匹配。
-  // 128-bit UUID 占 18 字节，Flags 占 3 字节，剩余 10 字节给短设备名。
-  // 短名 "MicroBit" 是完整设备名 "MicroBit-BLE" 的前缀，符合 BLE 规范。
-  // 广播包总大小：3 (Flags) + 18 (UUID) + 10 (短名) = 31 字节，刚好满。
+  // Web Bluetooth requires the service UUID to appear in the advertising packet (adv_data) for filter matching.
+  // 128-bit UUID takes 18 bytes, Flags take 3 bytes, leaving 10 bytes for the short device name.
+  // Short name "MicroBit" is a prefix of the full device name "MicroBit-BLE", compliant with BLE spec.
+  // Total advertising packet size: 3 (Flags) + 18 (UUID) + 10 (short name) = 31 bytes, exactly full.
   static ADV_DATA: LegacyAdvertisementPayload = LegacyAdvertisementBuilder::new()
     .flags(&[Flag::GeneralDiscovery, Flag::LE_Only])
     .services_128(ServiceList::Complete, &[NUS_UUID_BYTES])
-    .short_name("MicroBit")     // 完整设备名的前缀，放入广播包
+    .short_name("MicroBit")     // Prefix of full device name, fits in advertising packet
     .build();
 
-  // 扫描响应包：完整设备名（中央设备主动扫描后收到）
+  // Scan response packet: full device name (received after active scan by central device)
   static SCAN_DATA: LegacyAdvertisementPayload = LegacyAdvertisementBuilder::new()
     .full_name("MicroBit-BLE")
     .build();
 
   // ========================================
-  // 6. 开启广播并运行主循环
+  // 6. Start advertising and run main loop
   // ========================================
   ble.start_advertising();
-  info!("开始 BLE 广播，等待浏览器/nRF Connect 连接...");
+  info!("BLE advertising started, waiting for browser/nRF Connect to connect...");
   ble.run(&ADV_DATA, &SCAN_DATA).await;
 }

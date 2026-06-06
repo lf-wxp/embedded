@@ -1,12 +1,12 @@
-//! 连接状态指示器组件
-//! 使用与原始 HTML 一致的 .status 类名
+//! Connection status indicator component
+//! Uses the same .status class names as the original HTML
 
 use crate::context::AppState;
 use leptos::prelude::*;
 
-/// StatusIndicator 组件
-/// 显示当前 BLE 连接状态（未连接/连接中/已连接）
-/// 原始 HTML: `<div class="status" id="status"><span class="dot"></span><span>未连接</span></div>`
+/// StatusIndicator component
+/// Displays current BLE connection status (disconnected/connecting/connected)
+/// Original HTML: `<div class="status" id="status"><span class="dot"></span><span>Disconnected</span></div>`
 #[component]
 pub fn StatusIndicator() -> impl IntoView {
   let app_state = expect_context::<AppState>();
@@ -18,7 +18,7 @@ pub fn StatusIndicator() -> impl IntoView {
     ..
   } = app_state;
 
-  // 动态计算 .status 的额外类名
+  // Dynamically calculate extra class names for .status
   let status_class = move || {
     let mut cls = "status".to_string();
     if connecting.get() {
@@ -29,14 +29,14 @@ pub fn StatusIndicator() -> impl IntoView {
     cls
   };
 
-  // 状态文本
+  // Status text
   let status_text = move || {
     if connecting.get() {
-      "连接中...".to_string()
+      "Connecting...".to_string()
     } else if connected.get() {
-      device_name.get().unwrap_or_else(|| "已连接".to_string())
+      device_name.get().unwrap_or_else(|| "Connected".to_string())
     } else {
-      "未连接".to_string()
+      "Disconnected".to_string()
     }
   };
 

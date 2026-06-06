@@ -1,5 +1,5 @@
-//! UI 组件模块
-//! 包含所有的 Leptos 视图组件
+//! UI component module
+//! Contains all Leptos view components
 
 pub mod comm_log;
 pub mod connect_buttons;

@@ -1,10 +1,10 @@
-//! BLE 蓝牙模块
+//! BLE module
 //!
-//! 封装 nrf-softdevice 的蓝牙操作，提供简洁的 API 用于：
-//! - 启用/禁用 SoftDevice
-//! - 配置和注册 GATT Server（NUS + 可选 Battery Service）
-//! - 控制 BLE 广播（开启/停止）
-//! - 管理 BLE 连接 + 二进制协议消息分发
+//! Wraps nrf-softdevice BLE operations, providing a clean API for:
+//! - Enabling/disabling SoftDevice
+//! - Configuring and registering GATT Server (NUS + optional Battery Service)
+//! - Controlling BLE advertising (start/stop)
+//! - Managing BLE connection + binary protocol message dispatch
 
 pub mod battery;
 pub mod buttons;
@@ -28,26 +28,26 @@ use nrf_softdevice::raw;
 use battery::{BatteryService, BatteryServiceEvent};
 use nus::{NusService, NusServiceEvent};
 
-/// BLE 广播控制信号
+/// BLE advertising control signal
 static ADVERTISING_ENABLED: AtomicBool = AtomicBool::new(true);
 
-/// BLE 断开连接信号（用于主动断开当前连接）
+/// BLE disconnect signal (for actively disconnecting the current connection)
 static DISCONNECT_SIGNAL: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 
-/// 整体 GATT Server：NUS（主） + Battery（可选）
+/// Combined GATT Server: NUS (primary) + Battery (optional)
 #[nrf_softdevice::gatt_server]
 pub struct GattServer {
   pub nus: NusService,
   pub battery: BatteryService,
 }
 
-/// BLE 配置参数
+/// BLE configuration parameters
 pub struct BleConfig {
-  /// 设备名称（显示在蓝牙扫描列表中）
+  /// Device name (shown in Bluetooth scan list)
   pub device_name: &'static [u8],
-  /// 最大同时连接数
+  /// Maximum number of simultaneous connections
   pub max_connections: u8,
-  /// ATT MTU 大小
+  /// ATT MTU size
   pub att_mtu: u16,
 }
 
@@ -61,18 +61,18 @@ impl Default for BleConfig {
   }
 }
 
-/// BLE 控制器
+/// BLE controller
 pub struct BleController {
   sd: &'static Softdevice,
   server: GattServer,
 }
 
 impl BleController {
-  /// 启用 SoftDevice 并初始化 BLE 控制器
+  /// Enable SoftDevice and initialize BLE controller
   pub fn enable(spawner: &Spawner, config: &BleConfig) -> Self {
     let sd_config = nrf_softdevice::Config {
       clock: Some(raw::nrf_clock_lf_cfg_t {
-        // micro:bit V2 使用内部 RC 振荡器作为低频时钟源
+        // micro:bit V2 uses internal RC oscillator as low-frequency clock source
         source: raw::NRF_CLOCK_LF_SRC_RC as u8,
         rc_ctiv: 16,
         rc_temp_ctiv: 2,
@@ -104,15 +104,15 @@ impl BleController {
       ..Default::default()
     };
 
-    info!("正在启用 SoftDevice...");
+    info!("Enabling SoftDevice...");
     let sd = Softdevice::enable(&sd_config);
-    info!("SoftDevice 已启用");
+    info!("SoftDevice enabled");
 
-    let server = GattServer::new(sd).expect("GATT Server 注册失败");
-    info!("GATT Server 已注册（NUS + Battery）");
+    let server = GattServer::new(sd).expect("GATT Server registration failed");
+    info!("GATT Server registered (NUS + Battery)");
 
-    spawner.spawn(softdevice_task(sd).expect("softdevice_task spawn 失败"));
-    info!("SoftDevice 后台任务已启动");
+    spawner.spawn(softdevice_task(sd).expect("softdevice_task spawn failed"));
+    info!("SoftDevice background task started");
 
     Self { sd, server }
   }
@@ -125,16 +125,16 @@ impl BleController {
     &self.server
   }
 
-  /// 开启 BLE 广播
+  /// Start BLE advertising
   pub fn start_advertising(&self) {
     ADVERTISING_ENABLED.store(true, Ordering::SeqCst);
-    info!("BLE 广播已开启");
+    info!("BLE advertising started");
   }
 
-  /// 停止 BLE 广播
+  /// Stop BLE advertising
   pub fn stop_advertising(&self) {
     ADVERTISING_ENABLED.store(false, Ordering::SeqCst);
-    info!("BLE 广播已停止");
+    info!("BLE advertising stopped");
   }
 
   pub fn is_advertising(&self) -> bool {
@@ -143,10 +143,10 @@ impl BleController {
 
   pub fn disconnect(&self) {
     DISCONNECT_SIGNAL.signal(());
-    info!("已发送断开连接信号");
+    info!("Disconnect signal sent");
   }
 
-  /// 主循环：广播 -> 处理 GATT 事件 -> 断开 -> 重新广播
+  /// Main loop: advertise -> handle GATT events -> disconnect -> re-advertise
   pub async fn run(&self, adv_data: &[u8], scan_data: &[u8]) -> ! {
     loop {
       if !ADVERTISING_ENABLED.load(Ordering::SeqCst) {
@@ -163,22 +163,22 @@ impl BleController {
         scan_data,
       };
 
-      info!("正在广播中，等待连接...");
+      info!("Advertising, waiting for connection...");
 
       let conn = match peripheral::advertise_connectable(self.sd, adv, &adv_config).await {
         Ok(c) => c,
         Err(_) => {
-          warn!("广播错误，1 秒后重试");
+          warn!("Advertising error, retrying in 1 second");
           embassy_time::Timer::after_millis(1000).await;
           continue;
         }
       };
 
-      info!("BLE 设备已连接!");
-      // 取消订阅状态（新连接重置）
+      info!("BLE device connected!");
+      // Clear subscription state (reset on new connection)
       buttons::set_subscribed(false);
 
-      // GATT 事件循环
+      // GATT event loop
       let nus_ref = &self.server.nus;
       let sd_ref: &'static Softdevice = self.sd;
       let conn_ref = &conn;
@@ -186,7 +186,7 @@ impl BleController {
       let gatt_future = gatt_server::run(conn_ref, &self.server, |event| match event {
         GattServerEvent::Nus(e) => {
           if let Some(rx) = NusService::handle_event(e) {
-            // 通过 NUS 收到一帧数据，解析并执行
+            // Received a frame via NUS, parse and execute
             if let Some(resp) = commands::handle_rx(sd_ref, rx.as_slice()) {
               let _ = nus_ref.send(conn_ref, resp.as_slice());
             }
@@ -199,7 +199,7 @@ impl BleController {
         },
       });
 
-      // 按钮事件转发：从 BUTTON_EVENTS channel 取出，编码后通过 NUS 发送
+      // Button event forwarding: take from BUTTON_EVENTS channel, encode and send via NUS
       let button_forward = async {
         loop {
           let evt = buttons::BUTTON_EVENTS.receive().await;
@@ -215,15 +215,15 @@ impl BleController {
       let disconnect_future = DISCONNECT_SIGNAL.wait();
 
       match select3(gatt_future, button_forward, disconnect_future).await {
-        Either3::First(_) => info!("连接已断开，重新广播..."),
-        Either3::Second(_) => info!("按钮转发任务结束（不应发生），重新广播..."),
-        Either3::Third(_) => info!("主动断开连接，重新广播..."),
+        Either3::First(_) => info!("Connection disconnected, re-advertising..."),
+        Either3::Second(_) => info!("Button forwarding task ended (should not happen), re-advertising..."),
+        Either3::Third(_) => info!("Active disconnect, re-advertising..."),
       }
     }
   }
 }
 
-/// SoftDevice 运行任务
+/// SoftDevice run task
 #[embassy_executor::task]
 async fn softdevice_task(sd: &'static Softdevice) -> ! {
   sd.run().await

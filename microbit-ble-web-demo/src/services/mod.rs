@@ -1,4 +1,4 @@
-//! 服务模块
-//! 封装与后端/外部系统的交互
+//! Service module
+//! Encapsulates interactions with backend/external systems
 
 pub mod ble;

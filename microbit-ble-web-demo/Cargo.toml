@@ -10,10 +10,10 @@ version = "0.2.0"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# Leptos 前端框架
+# Leptos frontend framework
 leptos = { version = "0.8.19", features = ["csr"] }
 leptos-use = "0.18.3"
-# Web 绑定
+# Web bindings
 js-sys = "0.3.99"
 wasm-bindgen = "0.2.122"
 wasm-bindgen-futures = "0.4.72"
@@ -32,11 +32,11 @@ web-sys = { version = "0.3.99", features = [
   "Blob",
   "Url",
 ] }
-# 日志
+# Logging
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
 log = "0.4.32"
-# 工具库
+# Utility libraries
 base64 = "0.22.1"
 hex = "0.4.3"
 serde = { version = "1.0.228", features = ["derive"] }
@@ -46,21 +46,21 @@ serde-wasm-bindgen = "0.6.5"
 wasm-bindgen-test = "0.3.72"
 
 [features]
-# 用于 Trunk 构建
+# For Trunk build
 csr = ["leptos/csr"]
 hydrate = ["leptos/hydrate"]
 ssr = ["leptos/ssr"]
 
-# 默认启用 CSR（客户端渲染）
+# Default to CSR (Client-Side Rendering)
 default = ["csr"]
 
 [package.metadata.trunk]
-# Trunk 配置
+# Trunk configuration
 assets = []
 
 [profile.release]
 codegen-units = 1 
 lto = true 
-opt-level = "z" # 最小化 WASM 体积
+opt-level = "z" # Minimize WASM size
 panic = "abort" 
 strip = true

@@ -1,7 +1,7 @@
-//! Web Bluetooth 服务模块
-//! 封装 Web Bluetooth API 调用，提供 Rust 风格的异步接口
+//! Web Bluetooth service module
+//! Wraps Web Bluetooth API calls, providing a Rust-style async interface
 //!
-//! 参考：https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API
+//! Reference: https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API
 
 use crate::utils::{NUS_RX_CHAR, NUS_SERVICE, NUS_TX_CHAR};
 use js_sys::{JsString, Uint8Array};
@@ -15,7 +15,7 @@ use web_sys::{
   BluetoothRemoteGattServer, BluetoothRemoteGattService, EventTarget, RequestDeviceOptions,
 };
 
-/// BLE 连接状态
+/// BLE connection state
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BleConnectionState {
   Disconnected,
@@ -23,13 +23,13 @@ pub enum BleConnectionState {
   Connected,
 }
 
-/// 数据接收回调类型（WASM 单线程，使用 Rc<RefCell<>>）
+/// Data receive callback type (WASM single-threaded, using Rc<RefCell<>>)
 type OnDataCallback = Rc<RefCell<Option<Box<dyn Fn(Vec<u8>)>>>>;
-/// 状态变化回调类型
+/// State change callback type
 type OnStateChangeCallback = Rc<RefCell<Option<Box<dyn Fn(BleConnectionState)>>>>;
 
-/// BLE 服务句柄（内部可变状态）
-/// WASM 单线程，使用 Rc<RefCell<>> 安全共享
+/// BLE service handle (interior mutability)
+/// WASM single-threaded, safe to share using Rc<RefCell<>>
 #[derive(Clone)]
 pub struct BleService {
   pub device: Option<BluetoothDevice>,
@@ -58,67 +58,67 @@ impl BleService {
     }
   }
 
-  /// 请求用户选择设备并连接
+  /// Request user to select a device and connect
   pub async fn connect(&mut self) -> Result<(), String> {
     let bluetooth = get_bluetooth()?;
 
-    // 构建 requestDevice 选项
+    // Build requestDevice options
     // https://developer.mozilla.org/en-US/docs/Web/API/Bluetooth/requestDevice
     let opts = RequestDeviceOptions::new();
 
-    // filters: 按名称前缀过滤
+    // filters: filter by name prefix
     let filter = BluetoothLeScanFilterInit::new();
     filter.set_name_prefix("MicroBit");
     opts.set_filters(&[filter]);
 
-    // optionalServices: 需要访问的服务 UUID
+    // optionalServices: service UUIDs to access
     opts.set_optional_services(&[JsString::from(NUS_SERVICE)]);
 
-    // 请求设备 - request_device 返回 Promise<BluetoothDevice>
-    // JsFuture<BluetoothDevice>.await 直接得到 BluetoothDevice
+    // Request device - request_device returns Promise<BluetoothDevice>
+    // JsFuture::<BluetoothDevice>::await directly yields BluetoothDevice
     let device: BluetoothDevice = JsFuture::from(bluetooth.request_device(&opts))
       .await
-      .map_err(|e| format!("设备选择失败或用户取消: {e:?}"))?;
+      .map_err(|e| format!("Device selection failed or user cancelled: {e:?}"))?;
 
-    // 设置断开连接监听器
+    // Set up disconnect listener
     self.setup_disconnect_listener(&device)?;
 
-    // 连接 GATT 服务器
+    // Connect to GATT server
     self.set_state(BleConnectionState::Connecting);
-    let gatt_server = device.gatt().ok_or("设备不支持 GATT")?;
-    // connect() 返回 Promise<BluetoothRemoteGattServer>
+    let gatt_server = device.gatt().ok_or("Device does not support GATT")?;
+    // connect() returns Promise<BluetoothRemoteGattServer>
     let server: BluetoothRemoteGattServer = JsFuture::from(gatt_server.connect())
       .await
-      .map_err(|e| format!("GATT 连接失败: {e:?}"))?;
+      .map_err(|e| format!("GATT connection failed: {e:?}"))?;
 
-    // 获取 Nordic UART Service
-    // get_primary_services_with_str 返回 Promise<Array<BluetoothRemoteGattService>>
+    // Get Nordic UART Service
+    // get_primary_services_with_str returns Promise<Array<BluetoothRemoteGattService>>
     let services = JsFuture::from(server.get_primary_services_with_str(NUS_SERVICE))
       .await
-      .map_err(|e| format!("获取 NUS 服务失败: {e:?}"))?;
-    // Array<T>.get(0) 直接返回 T 类型
+      .map_err(|e| format!("Failed to get NUS service: {e:?}"))?;
+    // Array<T>.get(0) directly returns T type
     let service: BluetoothRemoteGattService = services.get(0);
 
-    // 获取 RX 特征（写入）
-    // get_characteristic_with_str 返回 Promise<BluetoothRemoteGattCharacteristic>
+    // Get RX characteristic (write)
+    // get_characteristic_with_str returns Promise<BluetoothRemoteGattCharacteristic>
     let rx_char: BluetoothRemoteGattCharacteristic =
       JsFuture::from(service.get_characteristic_with_str(NUS_RX_CHAR))
         .await
-        .map_err(|e| format!("获取 RX 特征失败: {e:?}"))?;
+        .map_err(|e| format!("Failed to get RX characteristic: {e:?}"))?;
 
-    // 获取 TX 特征（通知）
+    // Get TX characteristic (notify)
     let tx_char: BluetoothRemoteGattCharacteristic =
       JsFuture::from(service.get_characteristic_with_str(NUS_TX_CHAR))
         .await
-        .map_err(|e| format!("获取 TX 特征失败: {e:?}"))?;
+        .map_err(|e| format!("Failed to get TX characteristic: {e:?}"))?;
 
-    // 设置通知回调（在启动通知之前设置，避免丢失数据）
+    // Set up notification callback (set before starting notifications to avoid missing data)
     self.setup_notification_handler(&tx_char)?;
 
-    // 启动通知 - start_notifications 返回 Promise<BluetoothRemoteGattCharacteristic>
+    // Start notifications - start_notifications returns Promise<BluetoothRemoteGattCharacteristic>
     JsFuture::from(tx_char.start_notifications())
       .await
-      .map_err(|e| format!("启动通知失败: {e:?}"))?;
+      .map_err(|e| format!("Failed to start notifications: {e:?}"))?;
 
     self.device = Some(device);
     self.server = Some(server);
@@ -130,12 +130,12 @@ impl BleService {
     Ok(())
   }
 
-  /// 设置断开连接监听器
+  /// Set up disconnect listener
   fn setup_disconnect_listener(&self, device: &BluetoothDevice) -> Result<(), String> {
     let on_state_change = self.on_state_change.clone();
 
     let closure = Closure::wrap(Box::new(move |_event: web_sys::Event| {
-      log::info!("设备已断开连接");
+      log::info!("Device disconnected");
       let callback = on_state_change.borrow();
       if let Some(ref cb) = *callback {
         cb(BleConnectionState::Disconnected);
@@ -149,7 +149,7 @@ impl BleService {
     Ok(())
   }
 
-  /// 设置 TX 特征的通知处理程序
+  /// Set up notification handler for TX characteristic
   fn setup_notification_handler(
     &self,
     tx_char: &BluetoothRemoteGattCharacteristic,
@@ -160,17 +160,17 @@ impl BleService {
       let target = event.target().unwrap();
       let char: &BluetoothRemoteGattCharacteristic = target.unchecked_ref();
 
-      // 获取特征值（DataView）
+      // Get characteristic value (DataView)
       let data_view = match char.value() {
         Some(v) => v,
         None => {
-          log::warn!("通知事件中没有值");
+          log::warn!("No value in notification event");
           return;
         }
       };
 
-      // 从 DataView 正确转换为 Vec<u8>
-      // DataView 不能直接传给 Uint8Array::new()，需要使用 buffer + offset + length
+      // Correctly convert from DataView to Vec<u8>
+      // DataView cannot be directly passed to Uint8Array::new(), need buffer + offset + length
       let buffer = data_view.buffer();
       let byte_offset = data_view.byte_offset() as u32;
       let byte_length = data_view.byte_length() as u32;
@@ -178,49 +178,48 @@ impl BleService {
         js_sys::Uint8Array::new_with_byte_offset_and_length(&buffer, byte_offset, byte_length)
           .to_vec();
 
-      // 调用回调函数
+      // Invoke callback function
       let callback = on_data.borrow();
       if let Some(ref cb) = *callback {
         cb(bytes);
       }
     }) as Box<dyn FnMut(_)>);
 
-    // 设置通知处理程序
-    // add_event_listener_with_callback 定义在 EventTarget 上
-    // BluetoothRemoteGattCharacteristic 实现了 AsRef<EventTarget>
+    // Set notification handler
+    // add_event_listener_with_callback is defined on EventTarget
+    // BluetoothRemoteGattCharacteristic implements AsRef<EventTarget>
     let callback: &js_sys::Function = closure.as_ref().unchecked_ref();
     <BluetoothRemoteGattCharacteristic as AsRef<EventTarget>>::as_ref(tx_char)
       .add_event_listener_with_callback("characteristicvaluechanged", callback)
-      .map_err(|e| format!("添加通知处理程序失败: {e:?}"))?;
+      .map_err(|e| format!("Failed to add notification handler: {e:?}"))?;
 
-    // 忘记闭包（避免内存泄漏）
+    // Forget the closure (avoid memory leak)
     closure.forget();
 
     Ok(())
   }
 
-  /// 发送数据帧
+  /// Send data frame
   pub async fn send(&self, data: &[u8]) -> Result<(), String> {
-    let rx_char = self.rx_char.as_ref().ok_or("未连接")?;
+    let rx_char = self.rx_char.as_ref().ok_or("Not connected")?;
 
-    // 将 &[u8] 转换为 Uint8Array（write_value_with_u8_array 需要 &Uint8Array 参数）
-    // write_value_with_u8_array 返回 Result<Promise<Undefined>, JsValue>
-    // SAFETY: Uint8Array::view 要求 data 在调用期间不被修改或释放，
-    // 由于我们在 await 之前创建 view 且 data 是传入的引用，
-    // 在 JsFuture::from(promise).await 完成前 data 必须保持有效
+    // Convert &[u8] to Uint8Array (write_value_with_u8_array requires &Uint8Array parameter)
+    // SAFETY: Uint8Array::view requires data to not be modified or deallocated during the call,
+    // since we create the view before the await and data is a borrowed reference,
+    // data must remain valid until JsFuture::from(promise).await completes
     let js_data = unsafe { Uint8Array::view(data) };
     let promise = rx_char
       .write_value_with_u8_array(&js_data)
-      .map_err(|e| format!("写入请求失败: {e:?}"))?;
+      .map_err(|e| format!("Write request failed: {e:?}"))?;
     JsFuture::from(promise)
       .await
-      .map_err(|e| format!("写入失败: {e:?}"))?;
+      .map_err(|e| format!("Write failed: {e:?}"))?;
 
     log::debug!("TX: {}", crate::utils::to_hex(data));
     Ok(())
   }
 
-  /// 断开连接
+  /// Disconnect
   pub fn disconnect(&mut self) {
     if let Some(device) = &self.device {
       if let Some(gatt) = device.gatt() {
@@ -234,17 +233,17 @@ impl BleService {
     self.set_state(BleConnectionState::Disconnected);
   }
 
-  /// 检查是否已连接
+  /// Check if connected
   pub fn is_connected(&self) -> bool {
     self.server.as_ref().is_some_and(|s| s.connected())
   }
 
-  /// 获取设备名称
+  /// Get device name
   pub fn device_name(&self) -> Option<String> {
     self.device.as_ref().and_then(|d| d.name())
   }
 
-  /// 设置数据接收回调
+  /// Set data receive callback
   pub fn set_on_data<F>(&mut self, f: F)
   where
     F: Fn(Vec<u8>) + 'static,
@@ -252,7 +251,7 @@ impl BleService {
     *self.on_data.borrow_mut() = Some(Box::new(f));
   }
 
-  /// 设置状态变化回调
+  /// Set state change callback
   pub fn set_on_state_change<F>(&mut self, f: F)
   where
     F: Fn(BleConnectionState) + 'static,
@@ -260,25 +259,26 @@ impl BleService {
     *self.on_state_change.borrow_mut() = Some(Box::new(f));
   }
 
-  /// 内部：设置状态并触发回调
+  /// Internal: set state and trigger callback
   fn set_state(&self, state: BleConnectionState) {
-    log::info!("BLE 状态变化: {state:?}");
+    log::info!("BLE state changed: {state:?}");
     let callback = self.on_state_change.borrow();
     if let Some(ref cb) = *callback {
       cb(state);
     }
   }
 }
-/// 获取 Window 对象的 Bluetooth API
+
+/// Get Bluetooth API from Window object
 fn get_bluetooth() -> Result<Bluetooth, String> {
-  let window = web_sys::window().ok_or("无法获取 window 对象")?;
+  let window = web_sys::window().ok_or("Failed to get window object")?;
   window
     .navigator()
     .bluetooth()
-    .ok_or_else(|| "浏览器不支持 Web Bluetooth API".to_string())
+    .ok_or_else(|| "Browser does not support Web Bluetooth API".to_string())
 }
 
-/// 检查浏览器是否支持 Web Bluetooth
+/// Check if browser supports Web Bluetooth
 pub fn is_bluetooth_supported() -> bool {
   web_sys::window()
     .and_then(|w| w.navigator().bluetooth())

@@ -1,16 +1,16 @@
 # =============================================================================
-# micro:bit V2 BLE Web Demo - cargo-make 任务配置
-# Leptos 前端版本
+# micro:bit V2 BLE Web Demo - cargo-make task configuration
+# Leptos frontend version
 #
-# 使用方法:
-#   cargo make serve        - 启动 Trunk 开发服务器 (http://127.0.0.1:8080)
-#   cargo make build        - 编译 Release 版本 (Trunk build)
-#   cargo make build-debug  - 编译 Debug 版本 (Trunk build --debug)
-#   cargo make check        - 检查代码编译
-#   cargo make fmt          - 格式化代码
-#   cargo make clippy       - 运行 Clippy 静态分析
-#   cargo make clean        - 清理构建产物
-#   cargo make test         - 运行测试
+# Usage:
+#   cargo make serve        - Start Trunk dev server (http://127.0.0.1:8080)
+#   cargo make build        - Build Release version (Trunk build)
+#   cargo make build-debug  - Build Debug version (Trunk build --debug)
+#   cargo make check        - Check code compilation
+#   cargo make fmt          - Format code
+#   cargo make clippy       - Run Clippy static analysis
+#   cargo make clean        - Clean build artifacts
+#   cargo make test         - Run tests
 # =============================================================================
 
 [env]
@@ -18,194 +18,194 @@ HOST_TARGET = "${CARGO_MAKE_CRATE_TARGET_TRIPLE}"
 WASM_TARGET = "wasm32-unknown-unknown"
 
 # =============================================================================
-# 默认任务: 启动开发服务器
+# Default task: start dev server
 # =============================================================================
 [tasks.default]
 alias = "serve"
 
 # =============================================================================
-# serve - 启动 Trunk 开发服务器
+# serve - Start Trunk dev server
 # =============================================================================
 [tasks.server]
 args = ["serve", "--open"]
 command = "trunk"
-description = "启动 Trunk 开发服务器 (http://127.0.0.1:8080)"
+description = "Start Trunk dev server (http://127.0.0.1:8080)"
 
 # =============================================================================
-# build - 编译 Release 版本
+# build - Build Release version
 # =============================================================================
 [tasks.build]
 args = ["build", "--release"]
 command = "trunk"
-description = "编译 Release 版本 (Trunk build)"
+description = "Build Release version (Trunk build)"
 
 # =============================================================================
-# build-debug - 编译 Debug 版本
+# build-debug - Build Debug version
 # =============================================================================
 [tasks.build-debug]
 args = ["build"]
 command = "trunk"
-description = "编译 Debug 版本 (Trunk build)"
+description = "Build Debug version (Trunk build)"
 
 # =============================================================================
-# check - 检查代码编译 (不生成 WASM)
+# check - Check code compilation (without generating WASM)
 # =============================================================================
 [tasks.check]
 args = ["check", "--target", "${WASM_TARGET}"]
 command = "cargo"
-description = "检查代码是否能正确编译"
+description = "Check if code compiles correctly"
 
 # =============================================================================
-# fmt - 格式化代码
+# fmt - Format code
 # =============================================================================
 [tasks.fmt]
 args = ["fmt"]
 command = "cargo"
-description = "使用 rustfmt 格式化代码"
+description = "Format code using rustfmt"
 
 # =============================================================================
-# fmt-check - 检查代码格式 (不修改文件)
+# fmt-check - Check code format (without modifying files)
 # =============================================================================
 [tasks.fmt-check]
 args = ["fmt", "--", "--check"]
 command = "cargo"
-description = "检查代码格式是否符合规范 (不修改文件)"
+description = "Check code format compliance (without modifying files)"
 
 # =============================================================================
-# clippy - 运行 Clippy 静态分析
+# clippy - Run Clippy static analysis
 # =============================================================================
 [tasks.clippy]
 args = ["clippy", "--target", "${WASM_TARGET}", "--", "-D", "warnings"]
 command = "cargo"
-description = "运行 Clippy 静态分析检查"
+description = "Run Clippy static analysis checks"
 
 # =============================================================================
-# clean - 清理构建产物
+# clean - Clean build artifacts
 # =============================================================================
 [tasks.clean]
-description = "清理构建产物 (target + dist)"
+description = "Clean build artifacts (target + dist)"
 script = [
   "cargo clean",
   "rm -rf dist/",
 ]
 
 # =============================================================================
-# test - 运行测试
+# test - Run tests
 # =============================================================================
 [tasks.test]
 args = ["test", "--target", "${HOST_TARGET}"]
 command = "cargo"
-description = "运行测试"
+description = "Run tests"
 
 # =============================================================================
-# install-tools - 安装所需工具
+# install-tools - Install required tools
 # =============================================================================
 [tasks.install-tools]
-description = "安装所需工具 (trunk, wasm-bindgen-cli)"
+description = "Install required tools (trunk, wasm-bindgen-cli)"
 script = [
   "cargo install trunk wasm-bindgen-cli",
   "rustup target add wasm32-unknown-unknown",
 ]
 
 # =============================================================================
-# deploy - 部署到 GitHub Pages (可选)
+# deploy - Deploy to GitHub Pages (optional)
 # =============================================================================
 [tasks.deploy]
 dependencies = ["build"]
-description = "部署到 GitHub Pages"
+description = "Deploy to GitHub Pages"
 script = [
-  "echo '部署完成，dist/ 目录包含静态文件'",
-  "echo '可将其推送到 GitHub Pages 或上传到任意静态文件服务器'",
+  "echo 'Deployment complete, dist/ directory contains static files'",
+  "echo 'Push to GitHub Pages or upload to any static file server'",
 ]
 
 # =============================================================================
-# Docker 相关任务
+# Docker related tasks
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# docker-build - 构建 Docker 镜像
+# docker-build - Build Docker image
 # -----------------------------------------------------------------------------
 [tasks.docker-build]
-description = "构建 Docker 镜像"
+description = "Build Docker image"
 command = "docker"
 args = ["build", "-t", "microbit-ble-web-demo:latest", "."]
 
 # -----------------------------------------------------------------------------
-# docker-build-nocache - 无缓存构建 Docker 镜像
+# docker-build-nocache - Build Docker image without cache
 # -----------------------------------------------------------------------------
 [tasks.docker-build-nocache]
-description = "无缓存构建 Docker 镜像"
+description = "Build Docker image without cache"
 command = "docker"
 args = ["build", "--no-cache", "-t", "microbit-ble-web-demo:latest", "."]
 
 # -----------------------------------------------------------------------------
-# docker-up - 启动 Docker 容器 (后台运行)
+# docker-up - Start Docker container (detached)
 # -----------------------------------------------------------------------------
 [tasks.docker-up]
-description = "启动 Docker 容器 (docker-compose up -d)"
+description = "Start Docker container (docker-compose up -d)"
 command = "docker-compose"
 args = ["up", "-d"]
 
 # -----------------------------------------------------------------------------
-# docker-down - 停止并移除 Docker 容器
+# docker-down - Stop and remove Docker container
 # -----------------------------------------------------------------------------
 [tasks.docker-down]
-description = "停止并移除 Docker 容器 (docker-compose down)"
+description = "Stop and remove Docker container (docker-compose down)"
 command = "docker-compose"
 args = ["down"]
 
 # -----------------------------------------------------------------------------
-# docker-logs - 查看 Docker 容器日志
+# docker-logs - View Docker container logs
 # -----------------------------------------------------------------------------
 [tasks.docker-logs]
-description = "查看 Docker 容器日志 (docker-compose logs -f)"
+description = "View Docker container logs (docker-compose logs -f)"
 command = "docker-compose"
 args = ["logs", "-f"]
 
 # -----------------------------------------------------------------------------
-# docker-restart - 重启 Docker 容器
+# docker-restart - Restart Docker container
 # -----------------------------------------------------------------------------
 [tasks.docker-restart]
-description = "重启 Docker 容器"
+description = "Restart Docker container"
 command = "docker-compose"
 args = ["restart"]
 
 # -----------------------------------------------------------------------------
-# docker-ps - 查看运行中的 Docker 容器
+# docker-ps - View running Docker containers
 # -----------------------------------------------------------------------------
 [tasks.docker-ps]
-description = "查看运行中的 Docker 容器"
+description = "View running Docker containers"
 command = "docker-compose"
 args = ["ps"]
 
 # -----------------------------------------------------------------------------
-# docker-clean - 清理 Docker 容器、镜像和网络
+# docker-clean - Clean Docker containers, images, and networks
 # -----------------------------------------------------------------------------
 [tasks.docker-clean]
-description = "清理 Docker 容器、镜像和网络"
+description = "Clean Docker containers, images, and networks"
 script = [
   "docker-compose down -v --rmi all",
   "docker system prune -f",
 ]
 
 # -----------------------------------------------------------------------------
-# docker-push - 推送 Docker 镜像到仓库 (需要先登录)
+# docker-push - Push Docker image to registry (login required first)
 # -----------------------------------------------------------------------------
 [tasks.docker-push]
-description = "推送 Docker 镜像到仓库"
+description = "Push Docker image to registry"
 command = "docker"
 args = ["push", "microbit-ble-web-demo:latest"]
 
 # -----------------------------------------------------------------------------
-# docker-all - 完整流程: 构建 + 启动
+# docker-all - Full flow: build + start
 # -----------------------------------------------------------------------------
 [tasks.docker-all]
-description = "完整 Docker 流程: 构建镜像并启动容器"
+description = "Full Docker flow: build image and start container"
 dependencies = ["docker-build", "docker-up"]
 
 # -----------------------------------------------------------------------------
-# docker-rebuild - 重新构建并重启容器
+# docker-rebuild - Rebuild and restart container
 # -----------------------------------------------------------------------------
 [tasks.docker-rebuild]
-description = "重新构建 Docker 镜像并重启容器"
+description = "Rebuild Docker image and restart container"
 dependencies = ["docker-down", "docker-build", "docker-up"]

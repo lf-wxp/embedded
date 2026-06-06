@@ -1,33 +1,33 @@
 //! Nordic UART Service (NUS)
 //!
-//! 行业标准的 BLE 串口透传协议，被 Web Bluetooth 完美支持。
+//! Industry-standard BLE serial pass-through protocol, perfectly supported by Web Bluetooth.
 //!
 //! UUIDs (128-bit):
 //! - Service:       6e400001-b5a3-f393-e0a9-e50e24dcca9e
 //! - RX (Write):    6e400002-b5a3-f393-e0a9-e50e24dcca9e  (Central -> Peripheral)
 //! - TX (Notify):   6e400003-b5a3-f393-e0a9-e50e24dcca9e  (Peripheral -> Central)
 //!
-//! 通过 [`crate::ble::protocol`] 帧承载浏览器与 micro:bit 之间的双向通信。
+//! Bidirectional communication between browser and micro:bit is carried via [`crate::ble::protocol`] frames.
 
 use defmt::info;
 use nrf_softdevice::ble::Connection;
 
-/// NUS 单次写入/通知最大字节数。
+/// Maximum bytes per NUS write/notification.
 ///
-/// 选择 64 与 ATT MTU 对齐（MTU 64 - 3 字节 ATT 头 = 61 可用）。
-/// 选择固定数组而非 `heapless::Vec`，避免不同 crate 间 heapless 版本冲突。
+/// Set to 64 to align with ATT MTU (MTU 64 - 3 bytes ATT header = 61 usable).
+/// Uses fixed array instead of `heapless::Vec` to avoid heapless version conflicts across crates.
 pub const NUS_MAX_LEN: usize = 64;
 
-/// Nordic UART Service GATT 定义
+/// Nordic UART Service GATT definition
 ///
-/// 注意：这里的 RX/TX 字段类型是 `[u8; NUS_MAX_LEN]`。
-/// nrf-softdevice 的 `GattValue for [u8; N]` 实现允许接收任意 0..=N 字节的写入：
-/// 不足 N 字节时会用 0 填充（这正是变长协议帧通常的处理方式）。
-/// 真正的帧长度由协议头自身（[`crate::ble::protocol`] 中的 LEN 字段）确定，
-/// 因此尾部填充 0 不会影响解析。
+/// Note: The RX/TX field type here is `[u8; NUS_MAX_LEN]`.
+/// The `GattValue for [u8; N]` implementation in nrf-softdevice allows receiving writes of any 0..=N bytes:
+/// bytes shorter than N are zero-padded (this is the usual handling for variable-length protocol frames).
+/// The actual frame length is determined by the protocol header itself (the LEN field in [`crate::ble::protocol`]),
+/// so zero-padding at the tail does not affect parsing.
 #[nrf_softdevice::gatt_service(uuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e")]
 pub struct NusService {
-  /// RX：浏览器写入的数据 (Write / Write Without Response)
+  /// RX: data written by browser (Write / Write Without Response)
   #[characteristic(
     uuid = "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     write,
@@ -35,16 +35,16 @@ pub struct NusService {
   )]
   pub rx: [u8; NUS_MAX_LEN],
 
-  /// TX：板子向浏览器推送的数据 (Notify)
+  /// TX: data pushed from board to browser (Notify)
   #[characteristic(uuid = "6e400003-b5a3-f393-e0a9-e50e24dcca9e", notify)]
   pub tx: [u8; NUS_MAX_LEN],
 }
 
 impl NusService {
-  /// 通过 TX 特征值向 central 发送一帧数据。
+  /// Send a frame of data to central via TX characteristic value.
   ///
-  /// 数据若不足 [`NUS_MAX_LEN`]，会用 0 字节填充到固定长度。
-  /// 接收端依据协议帧自身的 LEN 字段决定有效长度。
+  /// If data is shorter than [`NUS_MAX_LEN`], it is zero-padded to the fixed length.
+  /// The receiver determines the valid length from the LEN field in the protocol frame itself.
   pub fn send(&self, conn: &Connection, data: &[u8]) -> Result<(), ()> {
     if data.len() > NUS_MAX_LEN {
       return Err(());
@@ -54,16 +54,16 @@ impl NusService {
     self.tx_notify(conn, &buf).map_err(|_| ())
   }
 
-  /// 处理 GATT 事件
+  /// Handle GATT events
   pub fn handle_event(event: NusServiceEvent) -> Option<NusRx> {
     match event {
       NusServiceEvent::TxCccdWrite { notifications } => {
         info!(
-          "NUS TX 通知 {}",
+          "NUS TX notification {}",
           if notifications {
-            "已启用"
+            "enabled"
           } else {
-            "已禁用"
+            "disabled"
           }
         );
         None
@@ -73,15 +73,15 @@ impl NusService {
   }
 }
 
-/// 一次 RX 写入的固定长度快照。
+/// Fixed-length snapshot of one RX write.
 #[derive(Clone, Copy)]
 pub struct NusRx {
   buf: [u8; NUS_MAX_LEN],
 }
 
 impl NusRx {
-  /// 返回完整的固定长度缓冲区切片（含尾部填充 0）。
-  /// 协议解析器应该自行根据帧头 LEN 字段截取有效数据。
+  /// Returns the full fixed-length buffer slice (including trailing zero-padding).
+  /// The protocol parser should extract valid data based on the LEN field in the frame header.
   pub fn as_slice(&self) -> &[u8] {
     &self.buf
   }

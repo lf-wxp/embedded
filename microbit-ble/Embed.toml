@@ -6,7 +6,7 @@ halt_afterwards = false
 
 [default.rtt]
 enabled = true
-# 扫描内存查找 RTT 控制块（SoftDevice 环境下可能需要）
+# Scan memory for RTT control block (may be needed in SoftDevice environment)
 scan_memory = true
 
 [default.gdb]

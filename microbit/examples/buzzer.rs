@@ -7,22 +7,22 @@ use microbit::{board::Board, hal::gpio::Level};
 use panic_rtt_target as _;
 use rtt_target::{rprintln, rtt_init_print};
 
-// 以下是《小星星》的曲谱数据
-// 音符 (MIDI编号) 和 时值 (毫秒)
-const NOTE_MIDI_C4: u8 = 60; // 中音Do
+// The following are the score data for "Twinkle Twinkle Little Star"
+// Note (MIDI number) and duration (milliseconds)
+const NOTE_MIDI_C4: u8 = 60; // Middle C (Do)
 const NOTE_MIDI_D4: u8 = 62; // Re
 const NOTE_MIDI_E4: u8 = 64; // Mi
 const NOTE_MIDI_F4: u8 = 65; // Fa
 const NOTE_MIDI_G4: u8 = 67; // Sol
 const NOTE_MIDI_A4: u8 = 69; // La
 const NOTE_MIDI_B4: u8 = 71; // Si
-const NOTE_MIDI_C5: u8 = 72; // 高音Do
+const NOTE_MIDI_C5: u8 = 72; // High C (Do)
 
-// 时值常量 (毫秒)
-const QUARTER_NOTE: u32 = 500; // 四分音符，一拍
-const HALF_NOTE: u32 = 1000; // 二分音符，两拍
+// Duration constants (milliseconds)
+const QUARTER_NOTE: u32 = 500; // Quarter note, one beat
+const HALF_NOTE: u32 = 1000; // Half note, two beats
 
-// 整个乐谱是一个元组数组: (MIDI音符编号, 时值)
+// The entire score is a tuple array: (MIDI note number, duration)
 const SCORE: [(u8, u32); 20] = [
   (NOTE_MIDI_C4, QUARTER_NOTE),
   (NOTE_MIDI_C4, QUARTER_NOTE),
@@ -52,7 +52,7 @@ fn main() -> ! {
   rprintln!("Starting to play 'Twinkle Twinkle Little Star'...");
 
   let board = Board::take().unwrap();
-  // 初始化蜂鸣器驱动，连接到悟空板上的 P0 引脚
+  // Initialize buzzer driver, connected to P0 pin on WuKong board
   let pin = board.edge.e00.into_push_pull_output(Level::Low);
   let mut buzzer = WuKongBuzzer::new(board.PWM0, pin);
 

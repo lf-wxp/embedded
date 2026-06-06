@@ -1,28 +1,28 @@
-//! 全局上下文模块
-//! 提供应用级别的共享状态，包括 BLE 服务和响应式信号
+//! Global context module
+//! Provides application-level shared state, including BLE service and reactive signals
 
 use crate::services::ble::BleService;
 use leptos::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// 接收到的帧数据（已解析）
+/// Received frame data (already parsed)
 #[derive(Clone, Debug)]
 pub struct ReceivedFrame {
   pub cmd: u8,
   pub payload: Vec<u8>,
 }
 
-/// 全局应用状态
+/// Global application state
 #[derive(Clone, Copy)]
 pub struct AppState {
-  /// 连接状态
+  /// Connection status
   pub connected: RwSignal<bool>,
-  /// 正在连接中
+  /// Currently connecting
   pub connecting: RwSignal<bool>,
-  /// 设备名称
+  /// Device name
   pub device_name: RwSignal<Option<String>>,
-  /// 最新接收到的帧（其他组件通过监听此信号获取数据）
+  /// Most recently received frame (other components listen on this signal for data)
   pub last_frame: RwSignal<Option<ReceivedFrame>>,
 }
 
@@ -43,8 +43,8 @@ impl AppState {
   }
 }
 
-/// 全局共享的 BLE 服务句柄
-/// WASM 是单线程的，使用 Rc<RefCell<>> 即可
+/// Globally shared BLE service handle
+/// WASM is single-threaded, so Rc<RefCell<>> is sufficient
 #[derive(Clone)]
 pub struct SharedBleService(pub Rc<RefCell<BleService>>);
 
@@ -60,19 +60,19 @@ impl Default for SharedBleService {
   }
 }
 
-// 全局 BLE 服务实例（WASM 单线程，使用 thread_local 安全）
+// Global BLE service instance (WASM single-threaded, safe to use thread_local)
 thread_local! {
   static GLOBAL_BLE: RefCell<Option<SharedBleService>> = const { RefCell::new(None) };
 }
 
-/// 初始化全局 BLE 服务
+/// Initialize global BLE service
 pub fn init_global_ble(ble: SharedBleService) {
   GLOBAL_BLE.with(|g| {
     *g.borrow_mut() = Some(ble);
   });
 }
 
-/// 获取全局 BLE 服务的克隆
+/// Get a clone of the global BLE service
 pub fn get_global_ble() -> Option<SharedBleService> {
   GLOBAL_BLE.with(|g| g.borrow().clone())
 }

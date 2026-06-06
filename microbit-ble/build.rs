@@ -4,23 +4,23 @@ use std::io::Write;
 use std::path::PathBuf;
 
 fn main() {
-  // 将 memory.x 放入链接器搜索路径
+  // Add memory.x to the linker search path
   let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
   File::create(out.join("memory.x"))
     .unwrap()
     .write_all(include_bytes!("memory.x"))
     .unwrap();
 
-  // 生成中断符号别名链接脚本
-  // nrf-pac 0.3 (embassy-nrf 使用) 和 nrf52833-pac (nrf-softdevice 使用)
-  // 对同一中断使用不同的符号名称，需要提供别名映射
+  // Generate interrupt symbol alias linker script
+  // nrf-pac 0.3 (used by embassy-nrf) and nrf52833-pac (used by nrf-softdevice)
+  // use different symbol names for the same interrupts, requiring alias mapping
   //
-  // 关键：nrf_pac 的向量表使用 EGU2_SWI2 符号名，而 nrf-softdevice 定义的
-  // 中断处理函数名为 SWI2_EGU2。必须将 EGU2_SWI2 映射到 SWI2_EGU2，
-  // 否则 SoftDevice 的 BLE 事件通知中断将无法被正确处理。
+  // Key: nrf_pac's vector table uses EGU2_SWI2 symbol name, while nrf-softdevice's
+  // interrupt handler is named SWI2_EGU2. Must map EGU2_SWI2 to SWI2_EGU2,
+  // otherwise SoftDevice's BLE event notification interrupt won't be handled properly.
   let interrupt_aliases = r#"
-/* nrf-pac <-> nrf52833-pac 中断符号别名 */
-/* nrf_pac 使用 EGU2_SWI2，nrf-softdevice 定义处理函数为 SWI2_EGU2 */
+/* nrf-pac <-> nrf52833-pac interrupt symbol aliases */
+/* nrf_pac uses EGU2_SWI2, nrf-softdevice defines handler as SWI2_EGU2 */
 PROVIDE(CLOCK_POWER = DefaultHandler);
 PROVIDE(UARTE0 = DefaultHandler);
 PROVIDE(TWISPI0 = DefaultHandler);
@@ -41,7 +41,7 @@ PROVIDE(SPI2 = DefaultHandler);
 
   println!("cargo:rustc-link-search={}", out.display());
 
-  // 当 memory.x 变化时重新运行
+  // Re-run when memory.x changes
   println!("cargo:rerun-if-changed=memory.x");
   println!("cargo:rerun-if-changed=build.rs");
 }

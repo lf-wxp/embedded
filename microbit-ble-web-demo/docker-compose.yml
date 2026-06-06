@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  # micro:bit BLE Web Demo 服务
+  microbit-ble-web-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: microbit-ble-web-demo
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    networks:
+      - microbit-net
+
+  # (可选) 如果你需要本地开发服务器，可以启用以下服务
+  # dev-server:
+  #   image: node:alpine
+  #   container_name: microbit-ble-dev
+  #   working_dir: /app
+  #   volumes:
+  #     - .:/app
+  #   ports:
+  #     - "3000:3000"
+  #   command: npx serve -s dist -l 3000
+  #   networks:
+  #     - microbit-net
+
+networks:
+  microbit-net:
+    driver: bridge

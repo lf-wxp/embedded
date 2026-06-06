@@ -3,9 +3,9 @@
 //! Sends commands via BLE and listens for responses
 
 use crate::components::comm_log::{log_error, log_tx};
-use crate::context::{get_global_ble, AppState};
-use crate::utils::{build_frame, Command};
+use crate::context::{AppState, get_global_ble};
 use leptos::prelude::*;
+use microbit_ble_protocol::{Command, build_frame_vec as build_frame};
 use wasm_bindgen_futures::spawn_local;
 
 /// Send data frame via global BLE service

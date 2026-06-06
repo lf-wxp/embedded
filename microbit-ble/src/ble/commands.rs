@@ -8,10 +8,10 @@ use nrf_softdevice::temperature_celsius;
 
 use super::buttons;
 use super::led_matrix;
-use super::protocol::{
-  self, CMD_BTN_EVENT, CMD_BTN_SUBSCRIBE, CMD_ECHO, CMD_ECHO_RESP, CMD_ERROR, CMD_LED_ACK,
-  CMD_LED_CHAR, CMD_LED_CLEAR, CMD_LED_SET, CMD_PING, CMD_PONG, CMD_TEMP_GET, CMD_TEMP_RESP,
-  ERR_BAD_CRC, ERR_BAD_FRAME, ERR_BAD_PAYLOAD, ERR_UNKNOWN_CMD, MAX_FRAME_LEN,
+use microbit_ble_protocol::{
+  CMD_BTN_EVENT, CMD_BTN_SUBSCRIBE, CMD_ECHO, CMD_ECHO_RESP, CMD_ERROR, CMD_LED_ACK, CMD_LED_CHAR,
+  CMD_LED_CLEAR, CMD_LED_SET, CMD_PING, CMD_PONG, CMD_TEMP_GET, CMD_TEMP_RESP, ERR_BAD_CRC,
+  ERR_BAD_FRAME, ERR_BAD_PAYLOAD, ERR_UNKNOWN_CMD, MAX_FRAME_LEN,
 };
 
 /// Processing result: encoded response frame (at most one frame)
@@ -30,7 +30,7 @@ impl Response {
 
   pub fn build(cmd: u8, payload: &[u8]) -> Option<Self> {
     let mut r = Self::new();
-    let n = protocol::build_frame(cmd, payload, &mut r.buf)?;
+    let n = microbit_ble_protocol::build_frame(cmd, payload, &mut r.buf)?;
     r.len = n;
     Some(r)
   }
@@ -49,12 +49,12 @@ pub fn encode_button_event(evt: buttons::ButtonEvent) -> Option<Response> {
 /// Process one NUS RX write, return the response to write back (if any)
 pub fn handle_rx(sd: &Softdevice, data: &[u8]) -> Option<Response> {
   // Parse frame
-  let frame = match protocol::parse_frame(data) {
+  let frame = match microbit_ble_protocol::parse_frame(data) {
     Ok(f) => f,
     Err(e) => {
       warn!("Frame parse failed: {:?}", defmt::Debug2Format(&e));
       let code = match e {
-        protocol::ParseError::BadCrc => ERR_BAD_CRC,
+        microbit_ble_protocol::ParseError::BadCrc => ERR_BAD_CRC,
         _ => ERR_BAD_FRAME,
       };
       return Response::build(CMD_ERROR, &[code]);

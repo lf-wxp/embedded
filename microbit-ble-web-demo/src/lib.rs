@@ -10,7 +10,7 @@ pub mod context;
 pub mod services;
 pub mod utils;
 
-use context::{init_global_ble, AppState, SharedBleService};
+use context::{AppState, SharedBleService, init_global_ble};
 use leptos::context::provide_context;
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;

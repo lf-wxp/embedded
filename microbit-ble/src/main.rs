@@ -8,7 +8,7 @@
 //! - Read on-chip temperature
 //! - Protocol frame echo (connectivity test)
 //!
-//! See [`crate::ble::protocol`] module for protocol definition.
+//! See [`microbit_ble_protocol`] module for protocol definition.
 
 #![no_std]
 #![no_main]
@@ -53,18 +53,21 @@ async fn main(spawner: Spawner) {
   // ========================================
   // 2. Start LED matrix refresh task
   // ========================================
-  spawner.spawn(led_matrix_task(LedPins {
-    row1: p.P0_21,
-    row2: p.P0_22,
-    row3: p.P0_15,
-    row4: p.P0_24,
-    row5: p.P0_19,
-    col1: p.P0_28,
-    col2: p.P0_11,
-    col3: p.P0_31,
-    col4: p.P1_05,
-    col5: p.P0_30,
-  }).expect("led_matrix_task spawn failed"));
+  spawner.spawn(
+    led_matrix_task(LedPins {
+      row1: p.P0_21,
+      row2: p.P0_22,
+      row3: p.P0_15,
+      row4: p.P0_24,
+      row5: p.P0_19,
+      col1: p.P0_28,
+      col2: p.P0_11,
+      col3: p.P0_31,
+      col4: p.P1_05,
+      col5: p.P0_30,
+    })
+    .expect("led_matrix_task spawn failed"),
+  );
 
   // Show an icon on startup to indicate firmware is running
   ble::led_matrix::show_char(b'B');
@@ -103,7 +106,7 @@ async fn main(spawner: Spawner) {
   static ADV_DATA: LegacyAdvertisementPayload = LegacyAdvertisementBuilder::new()
     .flags(&[Flag::GeneralDiscovery, Flag::LE_Only])
     .services_128(ServiceList::Complete, &[NUS_UUID_BYTES])
-    .short_name("MicroBit")     // Prefix of full device name, fits in advertising packet
+    .short_name("MicroBit") // Prefix of full device name, fits in advertising packet
     .build();
 
   // Scan response packet: full device name (received after active scan by central device)

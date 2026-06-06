@@ -7,7 +7,7 @@
 //! - RX (Write):    6e400002-b5a3-f393-e0a9-e50e24dcca9e  (Central -> Peripheral)
 //! - TX (Notify):   6e400003-b5a3-f393-e0a9-e50e24dcca9e  (Peripheral -> Central)
 //!
-//! Bidirectional communication between browser and micro:bit is carried via [`crate::ble::protocol`] frames.
+//! Bidirectional communication between browser and micro:bit is carried via [`microbit_ble_protocol`] frames.
 
 use defmt::info;
 use nrf_softdevice::ble::Connection;
@@ -23,7 +23,7 @@ pub const NUS_MAX_LEN: usize = 64;
 /// Note: The RX/TX field type here is `[u8; NUS_MAX_LEN]`.
 /// The `GattValue for [u8; N]` implementation in nrf-softdevice allows receiving writes of any 0..=N bytes:
 /// bytes shorter than N are zero-padded (this is the usual handling for variable-length protocol frames).
-/// The actual frame length is determined by the protocol header itself (the LEN field in [`crate::ble::protocol`]),
+/// The actual frame length is determined by the protocol header itself (the LEN field in [`microbit_ble_protocol`]),
 /// so zero-padding at the tail does not affect parsing.
 #[nrf_softdevice::gatt_service(uuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e")]
 pub struct NusService {
@@ -60,11 +60,7 @@ impl NusService {
       NusServiceEvent::TxCccdWrite { notifications } => {
         info!(
           "NUS TX notification {}",
-          if notifications {
-            "enabled"
-          } else {
-            "disabled"
-          }
+          if notifications { "enabled" } else { "disabled" }
         );
         None
       }

@@ -2,9 +2,9 @@
 //! Sends Echo command via BLE and listens for response
 
 use crate::components::comm_log::{log_error, log_tx};
-use crate::context::{get_global_ble, AppState};
-use crate::utils::{build_frame, Command};
+use crate::context::{AppState, get_global_ble};
 use leptos::prelude::*;
+use microbit_ble_protocol::{Command, build_frame_vec as build_frame};
 use wasm_bindgen_futures::spawn_local;
 
 /// EchoPanel component
@@ -20,14 +20,14 @@ pub fn EchoPanel() -> impl IntoView {
 
   // Listen for Echo response
   Effect::new(move |_| {
-    if let Some(frame) = last_frame.get() {
-      if frame.cmd == Command::EchoResp as u8 {
-        // Echo response payload is the original sent data
-        let text = String::from_utf8(frame.payload.clone())
-          .unwrap_or_else(|_| format!("(hex) {}", hex::encode(&frame.payload)));
-        set_echo_result.set(format!("Echo: {text}"));
-        set_testing.set(false);
-      }
+    if let Some(frame) = last_frame.get()
+      && frame.cmd == Command::EchoResp as u8
+    {
+      // Echo response payload is the original sent data
+      let text = String::from_utf8(frame.payload.clone())
+        .unwrap_or_else(|_| format!("(hex) {}", hex::encode(&frame.payload)));
+      set_echo_result.set(format!("Echo: {text}"));
+      set_testing.set(false);
     }
   });
 

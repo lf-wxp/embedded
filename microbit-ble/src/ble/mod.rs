@@ -11,7 +11,6 @@ pub mod buttons;
 pub mod commands;
 pub mod led_matrix;
 pub mod nus;
-pub mod protocol;
 
 use core::mem;
 use core::sync::atomic::{AtomicBool, Ordering};
@@ -216,7 +215,9 @@ impl BleController {
 
       match select3(gatt_future, button_forward, disconnect_future).await {
         Either3::First(_) => info!("Connection disconnected, re-advertising..."),
-        Either3::Second(_) => info!("Button forwarding task ended (should not happen), re-advertising..."),
+        Either3::Second(_) => {
+          info!("Button forwarding task ended (should not happen), re-advertising...")
+        }
         Either3::Third(_) => info!("Active disconnect, re-advertising..."),
       }
     }

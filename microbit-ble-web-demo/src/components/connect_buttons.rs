@@ -3,10 +3,10 @@
 //! After successful connection, sets up data receive callback, parses frames and dispatches to AppState
 
 use crate::components::comm_log::{log_error, log_info, log_rx};
-use crate::context::{get_global_ble, AppState, ReceivedFrame};
+use crate::context::{AppState, ReceivedFrame, get_global_ble};
 use crate::services::ble::BleConnectionState;
-use crate::utils::{parse_frame, to_hex};
 use leptos::prelude::*;
+use microbit_ble_protocol::{parse_frame_vec as parse_frame, to_hex};
 use wasm_bindgen_futures::spawn_local;
 
 /// ConnectButtons component

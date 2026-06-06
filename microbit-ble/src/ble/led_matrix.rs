@@ -137,10 +137,10 @@ pub async fn led_matrix_task(pins: LedPins) {
         }
       }
       // Set columns to light up for this row (low = conducting)
-      for c_idx in 0..5 {
+      for (c_idx, col) in cols.iter_mut().enumerate() {
         let bit_idx = r * 5 + c_idx;
         if frame & (1 << bit_idx) != 0 {
-          cols[c_idx].set_low();
+          col.set_low();
         }
       }
       // This row lit for ~2ms (5 rows ~ 10ms period ~ 100Hz)

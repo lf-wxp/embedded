@@ -4,6 +4,7 @@ name = "microbit-ble"
 version = "0.1.0"
 
 [dependencies]
+microbit-ble-protocol = { path = "../microbit-ble-protocol" }
 # Embassy async runtime
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
 embassy-executor-timer-queue = "0.1.0"

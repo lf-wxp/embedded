@@ -21,7 +21,9 @@ pub struct BatteryService {
 
 impl BatteryService {
   /// Register with SoftDevice and return service instance
-  pub fn register(sd: &mut Softdevice) -> Result<Self, nrf_softdevice::ble::gatt_server::RegisterError> {
+  pub fn register(
+    sd: &mut Softdevice,
+  ) -> Result<Self, nrf_softdevice::ble::gatt_server::RegisterError> {
     Self::new(sd)
   }
 
@@ -41,11 +43,7 @@ impl BatteryService {
       BatteryServiceEvent::LevelCccdWrite { notifications } => {
         info!(
           "Battery level notification {}",
-          if notifications {
-            "enabled"
-          } else {
-            "disabled"
-          }
+          if notifications { "enabled" } else { "disabled" }
         );
       }
     }

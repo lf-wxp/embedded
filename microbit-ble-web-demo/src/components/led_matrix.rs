@@ -1,9 +1,9 @@
 //! LED 5×5 matrix control component
 
 use crate::components::comm_log::{log_error, log_tx};
-use crate::context::{get_global_ble, AppState};
-use crate::utils::{build_frame, Command};
+use crate::context::{AppState, get_global_ble};
 use leptos::prelude::*;
+use microbit_ble_protocol::{Command, build_frame_vec as build_frame};
 use wasm_bindgen_futures::spawn_local;
 
 /// Helper function to send data frame via global BLE service
@@ -86,15 +86,15 @@ pub fn LedMatrixCard() -> impl IntoView {
   let (char_input, set_char_input) = signal(String::new());
   let send_char = move |_| {
     let ch = char_input.get();
-    if let Some(c) = ch.chars().next() {
-      if connected.get() {
-        match build_frame(Command::LedChar as u8, &[c as u8]) {
-          Ok(frame) => {
-            log_tx(format!("LED Char '{c}'"), Some(frame.clone()));
-            ble_send_frame(frame);
-          }
-          Err(e) => log_error(format!("Build frame failed: {e}")),
+    if let Some(c) = ch.chars().next()
+      && connected.get()
+    {
+      match build_frame(Command::LedChar as u8, &[c as u8]) {
+        Ok(frame) => {
+          log_tx(format!("LED Char '{c}'"), Some(frame.clone()));
+          ble_send_frame(frame);
         }
+        Err(e) => log_error(format!("Build frame failed: {e}")),
       }
     }
   };

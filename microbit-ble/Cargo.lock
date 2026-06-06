@@ -744,11 +744,16 @@ dependencies = [
  "embassy-sync 0.8.0",
  "embassy-time",
  "fixed",
+ "microbit-ble-protocol",
  "nrf-softdevice",
  "nrf-softdevice-s113",
  "panic-probe",
  "static_cell",
 ]
+
+[[package]]
+name = "microbit-ble-protocol"
+version = "0.1.0"
 
 [[package]]
 name = "nb"

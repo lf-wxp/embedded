@@ -3,12 +3,12 @@
 //!
 //! Reference: https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API
 
-use crate::utils::{NUS_RX_CHAR, NUS_SERVICE, NUS_TX_CHAR};
 use js_sys::{JsString, Uint8Array};
+use microbit_ble_protocol::{NUS_RX_CHAR, NUS_SERVICE, NUS_TX_CHAR, to_hex};
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use wasm_bindgen::{closure::Closure, JsCast};
+use wasm_bindgen::{JsCast, closure::Closure};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
   Bluetooth, BluetoothDevice, BluetoothLeScanFilterInit, BluetoothRemoteGattCharacteristic,
@@ -215,16 +215,16 @@ impl BleService {
       .await
       .map_err(|e| format!("Write failed: {e:?}"))?;
 
-    log::debug!("TX: {}", crate::utils::to_hex(data));
+    log::debug!("TX: {}", to_hex(data));
     Ok(())
   }
 
   /// Disconnect
   pub fn disconnect(&mut self) {
-    if let Some(device) = &self.device {
-      if let Some(gatt) = device.gatt() {
-        gatt.disconnect();
-      }
+    if let Some(device) = &self.device
+      && let Some(gatt) = device.gatt()
+    {
+      gatt.disconnect();
     }
     self.device = None;
     self.server = None;

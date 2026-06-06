@@ -1,51 +1,51 @@
 # ============================================
-# 阶段 1: 构建 WASM 应用
+# Stage 1: Build the WASM application
 # ============================================
 FROM rust:latest AS builder
 
-# 安装 wasm32 目标
+# Install the wasm32 target
 RUN rustup target add wasm32-unknown-unknown
 
-# 安装 Trunk (Leptos 官方推荐的构建工具)
+# Install Trunk (the officially recommended build tool for Leptos)
 RUN cargo install trunk
 
-# 设置工作目录
+# Set working directory
 WORKDIR /app
 
-# 复制 Cargo.toml 和 Cargo.lock 以利用 Docker 缓存
+# Copy Cargo.toml and Cargo.lock to leverage Docker caching
 COPY Cargo.toml Cargo.lock ./
 
-# 创建一个空的 lib.rs 以让 Cargo 缓存依赖
-# (这步是为了利用 Docker layer caching)
+# Create an empty lib.rs so Cargo can cache dependencies
+# (This step is to leverage Docker layer caching)
 RUN mkdir -p src && \
     echo "// dummy" > src/lib.rs && \
     echo "<!doctype html><html><head></head><body></body></html>" > index.html && \
     cargo fetch || true
 
-# 复制源代码
+# Copy source code
 COPY src ./src
 COPY index.html .
 COPY Trunk.toml .
 COPY style.css .
 COPY .cargo .cargo
 
-# 构建应用 (debug 模式)
-# 如需 release 模式，将下面一行改为: RUN trunk build --release
+# Build the application (debug mode)
+# For release mode, change the line below to: RUN trunk build --release
 RUN trunk build
 
 # ============================================
-# 阶段 2: 使用 Nginx 托管静态文件
+# Stage 2: Serve static files with Nginx
 # ============================================
 FROM nginx:alpine
 
-# 复制自定义 nginx 配置 (如果存在)
+# Copy custom nginx config (if it exists)
 # COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# 从构建阶段复制构建产物
+# Copy build artifacts from the builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 暴露 80 端口
+# Expose port 80
 EXPOSE 80
 
-# Nginx 会在前台运行 (alpine 镜像已配置好)
+# Nginx runs in the foreground (pre-configured in the alpine image)
 CMD ["nginx", "-g", "daemon off;"]

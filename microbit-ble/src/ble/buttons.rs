@@ -44,11 +44,7 @@ pub fn set_subscribed(yes: bool) {
   SUBSCRIBED.store(yes, Ordering::Relaxed);
   info!(
     "Button event subscription {}",
-    if yes {
-      "enabled"
-    } else {
-      "disabled"
-    }
+    if yes { "enabled" } else { "disabled" }
   );
 }
 

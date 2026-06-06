@@ -1,0 +1,15 @@
+[package]
+name = "web-server"
+version = "0.1.0"
+edition = "2024"
+
+# 独立 workspace：与父级 microbit-ble 嵌入式项目隔离，避免共享 target 和 lock。
+[workspace]
+
+[[bin]]
+name = "web-server"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = false

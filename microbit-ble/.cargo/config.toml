@@ -2,7 +2,7 @@
 target = "thumbv7em-none-eabihf"
 
 [target.thumbv7em-none-eabihf]
-runner = "probe-rs run --chip nRF52833_xxAA"
+runner = "probe-rs run --chip nRF52833_xxAA --rtt-scan-memory"
 rustflags = [
   "-C",
   "linker=rust-lld",

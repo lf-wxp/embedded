@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>micro:bit V2 BLE 控制台</title>
+    <style>
+      :root {
+        --bg: #0f1419;
+        --panel: #1b2330;
+        --panel-2: #232d3d;
+        --fg: #e6edf3;
+        --muted: #8b95a3;
+        --accent: #58a6ff;
+        --accent-2: #56d364;
+        --warn: #f0883e;
+        --error: #f85149;
+        --border: #30363d;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+        margin-left: auto;
+      }
+      .status .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+      .status.connected .dot { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+      .status.connecting .dot { background: var(--warn); }
+      button {
+        background: var(--panel-2);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: inherit;
+      }
+      button:hover:not(:disabled) {
+        background: #2d3a4f;
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+      button.primary:hover:not(:disabled) { background: #79b8ff; }
+      button.danger { background: var(--error); color: white; border-color: var(--error); }
+      main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        padding: 16px 24px;
+        max-width: 1400px;
+        width: 100%;
+        margin: 0 auto;
+      }
+      @media (max-width: 900px) {
+        main { grid-template-columns: 1fr; }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+      }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .row + .row { margin-top: 10px; }
+      input[type="text"] {
+        background: var(--bg);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-size: 14px;
+        flex: 1;
+        font-family: inherit;
+      }
+      input[type="text"]:focus { outline: none; border-color: var(--accent); }
+      .led-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        max-width: 220px;
+        margin: 12px auto;
+      }
+      .led {
+        aspect-ratio: 1;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.1s;
+      }
+      .led:hover { border-color: var(--accent); }
+      .led.on {
+        background: #ff4444;
+        border-color: #ff4444;
+        box-shadow: 0 0 8px #ff4444aa;
+      }
+      .stat {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--panel-2);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .btn-state {
+        display: inline-block;
+        width: 36px;
+        text-align: center;
+        font-weight: 600;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        background: var(--panel-2);
+        color: var(--muted);
+        padding: 4px 8px;
+        border-radius: 6px;
+      }
+      .btn-state.pressed {
+        background: var(--accent-2);
+        color: #0d1117;
+      }
+      #log {
+        background: #0d1117;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 12px;
+        height: 280px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      #log .tx { color: var(--accent); }
+      #log .rx { color: var(--accent-2); }
+      #log .err { color: var(--error); }
+      #log .info { color: var(--muted); }
+      label {
+        font-size: 13px;
+        color: var(--muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+        margin-top: 6px;
+      }
+      .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🔵 micro:bit V2 BLE 控制台</h1>
+      <span class="hint">Web Bluetooth · Nordic UART Service</span>
+      <div class="status" id="status">
+        <span class="dot"></span><span id="statusText">未连接</span>
+      </div>
+      <button class="primary" id="btnConnect">连接 micro:bit</button>
+      <button class="danger" id="btnDisconnect" disabled>断开</button>
+    </header>
+
+    <main>
+      <!-- LED 矩阵控制 -->
+      <section class="card">
+        <h2>LED 5×5 矩阵</h2>
+        <div class="led-grid" id="ledGrid" role="grid" aria-label="LED 矩阵编辑器"></div>
+        <div class="row">
+          <button id="btnLedSend" disabled>📤 应用到设备</button>
+          <button id="btnLedClear" disabled>清空</button>
+          <button id="btnLedAll" disabled>全亮</button>
+        </div>
+        <div class="row">
+          <input type="text" id="charInput" placeholder="单个字符 (A-Z 0-9 ! ?)" maxlength="1" />
+          <button id="btnLedChar" disabled>显示字符</button>
+        </div>
+        <p class="hint">点击格子切换亮/灭，再按"应用"通过 BLE 写入设备。</p>
+      </section>
+
+      <!-- 板载传感器 / 按键 -->
+      <section class="card">
+        <h2>板载状态</h2>
+        <div class="row">
+          <button id="btnPing" disabled>🏓 Ping</button>
+          <button id="btnTemp" disabled>🌡 读取温度</button>
+          <span class="stat" id="tempStat">温度: --</span>
+        </div>
+        <div class="row" style="margin-top: 14px;">
+          <label>
+            <input type="checkbox" id="chkBtnSub" disabled />
+            订阅按键 A/B 事件
+          </label>
+        </div>
+        <div class="row">
+          <span class="stat">A: <span id="btnAState" class="btn-state">--</span></span>
+          <span class="stat">B: <span id="btnBState" class="btn-state">--</span></span>
+        </div>
+        <p class="hint">订阅后按下板载按键 A 或 B，实时显示状态。</p>
+      </section>
+
+      <!-- Echo 回环 -->
+      <section class="card">
+        <h2>Echo 回环测试</h2>
+        <div class="row">
+          <input type="text" id="echoInput" placeholder="输入文本（≤56 字符）" />
+          <button id="btnEcho" disabled>发送</button>
+        </div>
+        <div class="row">
+          <span class="stat" id="echoResp">回显: --</span>
+        </div>
+      </section>
+
+      <!-- 通信日志 -->
+      <section class="card">
+        <h2>通信日志</h2>
+        <div id="log"></div>
+        <div class="row" style="margin-top: 8px;">
+          <button id="btnClearLog">清空日志</button>
+          <label><input type="checkbox" id="chkHexOnly" /> 仅显示 hex</label>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      // =========================================================
+      // 协议常量（与 Rust 固件 src/ble/protocol.rs 保持一致）
+      // =========================================================
+      const NUS_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      const NUS_RX_CHAR = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // browser -> board (Write)
+      const NUS_TX_CHAR = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // board -> browser (Notify)
+
+      const SOF = 0xaa;
+      const CMD = {
+        PING: 0x01,
+        LED_SET: 0x02,
+        LED_CLEAR: 0x03,
+        LED_CHAR: 0x04,
+        TEMP_GET: 0x05,
+        BTN_SUBSCRIBE: 0x06,
+        ECHO: 0x07,
+        PONG: 0x81,
+        LED_ACK: 0x82,
+        TEMP_RESP: 0x85,
+        ECHO_RESP: 0x87,
+        BTN_EVENT: 0x90,
+        ERROR: 0xff,
+      };
+
+      // =========================================================
+      // CRC-8 (poly 0x07, init 0x00) — 与固件实现一致
+      // =========================================================
+      const crc8 = (bytes) => {
+        let crc = 0;
+        for (const b of bytes) {
+          crc ^= b;
+          for (let i = 0; i < 8; i++) {
+            crc = crc & 0x80 ? ((crc << 1) ^ 0x07) & 0xff : (crc << 1) & 0xff;
+          }
+        }
+        return crc;
+      };
+
+      // 帧编码：[SOF, CMD, LEN, ...payload, CRC]
+      const buildFrame = (cmd, payload = []) => {
+        const len = payload.length;
+        if (len > 60) throw new Error("payload too long");
+        const frame = new Uint8Array(4 + len);
+        frame[0] = SOF;
+        frame[1] = cmd;
+        frame[2] = len;
+        for (let i = 0; i < len; i++) frame[3 + i] = payload[i];
+        // CRC 覆盖 cmd + len + payload
+        const crcInput = new Uint8Array(2 + len);
+        crcInput[0] = cmd;
+        crcInput[1] = len;
+        crcInput.set(payload, 2);
+        frame[3 + len] = crc8(crcInput);
+        return frame;
+      };
+
+      // 帧解析；返回 {cmd, payload} 或 null
+      const parseFrame = (bytes) => {
+        if (bytes.length < 4) return null;
+        if (bytes[0] !== SOF) return null;
+        const cmd = bytes[1];
+        const len = bytes[2];
+        if (bytes.length < 4 + len) return null;
+        const payload = bytes.slice(3, 3 + len);
+        const recvCrc = bytes[3 + len];
+        const crcInput = new Uint8Array(2 + len);
+        crcInput[0] = cmd;
+        crcInput[1] = len;
+        crcInput.set(payload, 2);
+        if (crc8(crcInput) !== recvCrc) return null;
+        return { cmd, payload };
+      };
+
+      const hex = (bytes) =>
+        Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join(" ");
+
+      // =========================================================
+      // BLE 状态
+      // =========================================================
+      const state = {
+        device: null,
+        server: null,
+        rxChar: null,
+        txChar: null,
+        connected: false,
+        ledFrame: new Uint8Array(25), // 当前编辑的位图
+      };
+
+      // =========================================================
+      // 日志
+      // =========================================================
+      const logEl = document.getElementById("log");
+      const chkHexOnly = document.getElementById("chkHexOnly");
+      const log = (msg, cls = "info") => {
+        const div = document.createElement("div");
+        div.className = cls;
+        const ts = new Date().toLocaleTimeString();
+        div.textContent = `[${ts}] ${msg}`;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+      };
+      document.getElementById("btnClearLog").onclick = () => (logEl.innerHTML = "");
+
+      // =========================================================
+      // UI 引用 & 状态切换
+      // =========================================================
+      const statusEl = document.getElementById("status");
+      const statusText = document.getElementById("statusText");
+      const btnConnect = document.getElementById("btnConnect");
+      const btnDisconnect = document.getElementById("btnDisconnect");
+      const controlButtons = [
+        "btnLedSend",
+        "btnLedClear",
+        "btnLedAll",
+        "btnLedChar",
+        "btnPing",
+        "btnTemp",
+        "chkBtnSub",
+        "btnEcho",
+      ].map((id) => document.getElementById(id));
+
+      const setConnected = (connected) => {
+        state.connected = connected;
+        statusEl.classList.toggle("connected", connected);
+        statusEl.classList.remove("connecting");
+        statusText.textContent = connected ? "已连接" : "未连接";
+        btnConnect.disabled = connected;
+        btnDisconnect.disabled = !connected;
+        controlButtons.forEach((b) => (b.disabled = !connected));
+      };
+
+      // =========================================================
+      // LED 矩阵编辑器
+      // =========================================================
+      const ledGrid = document.getElementById("ledGrid");
+      const buildLedGrid = () => {
+        ledGrid.innerHTML = "";
+        for (let i = 0; i < 25; i++) {
+          const cell = document.createElement("div");
+          cell.className = "led";
+          cell.setAttribute("role", "gridcell");
+          cell.setAttribute("tabindex", "0");
+          cell.setAttribute("aria-label", `LED ${Math.floor(i / 5) + 1}-${(i % 5) + 1}`);
+          cell.dataset.idx = i;
+          const toggle = () => {
+            state.ledFrame[i] = state.ledFrame[i] ? 0 : 1;
+            cell.classList.toggle("on", !!state.ledFrame[i]);
+          };
+          cell.onclick = toggle;
+          cell.onkeydown = (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggle();
+            }
+          };
+          ledGrid.appendChild(cell);
+        }
+      };
+      buildLedGrid();
+
+      const refreshLedGrid = () => {
+        const cells = ledGrid.children;
+        for (let i = 0; i < 25; i++) {
+          cells[i].classList.toggle("on", !!state.ledFrame[i]);
+        }
+      };
+
+      // =========================================================
+      // 发送 / 接收
+      // =========================================================
+      const sendFrame = async (cmd, payload = []) => {
+        if (!state.rxChar) return;
+        const frame = buildFrame(cmd, payload);
+        log(`TX cmd=0x${cmd.toString(16).padStart(2, "0")} ${hex(frame)}`, "tx");
+        try {
+          await state.rxChar.writeValueWithoutResponse(frame.buffer);
+        } catch (e) {
+          // 部分实现不支持 WriteWithoutResponse，回退到 WriteWithResponse
+          await state.rxChar.writeValue(frame.buffer);
+        }
+      };
+
+      const handleNotify = (event) => {
+        const dv = event.target.value;
+        const bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
+        if (!chkHexOnly.checked) {
+          // 不仅打印 hex，还根据 cmd 给出文字解释
+        }
+        log(`RX ${hex(bytes)}`, "rx");
+
+        const frame = parseFrame(bytes);
+        if (!frame) {
+          log(`⚠️  解析失败（CRC 或长度错误）`, "err");
+          return;
+        }
+        dispatchResp(frame);
+      };
+
+      // =========================================================
+      // 响应分发
+      // =========================================================
+      const tempStat = document.getElementById("tempStat");
+      const echoResp = document.getElementById("echoResp");
+      const btnAState = document.getElementById("btnAState");
+      const btnBState = document.getElementById("btnBState");
+
+      const dispatchResp = ({ cmd, payload }) => {
+        switch (cmd) {
+          case CMD.PONG:
+            log("✅ 收到 PONG", "info");
+            break;
+          case CMD.LED_ACK:
+            log(`LED 操作确认: status=${payload[0]}`, "info");
+            break;
+          case CMD.TEMP_RESP: {
+            const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+            const hundredths = view.getInt32(0, true); // little endian
+            const c = (hundredths / 100).toFixed(2);
+            tempStat.textContent = `温度: ${c} °C`;
+            log(`🌡  芯片温度 ${c} °C`, "info");
+            break;
+          }
+          case CMD.ECHO_RESP: {
+            const text = new TextDecoder().decode(payload);
+            echoResp.textContent = `回显: ${text}`;
+            log(`🔁 ECHO_RESP "${text}"`, "info");
+            break;
+          }
+          case CMD.BTN_EVENT: {
+            const id = payload[0];
+            const pressed = !!payload[1];
+            const target = id === 1 ? btnAState : id === 2 ? btnBState : null;
+            if (target) {
+              target.textContent = pressed ? "PRESS" : "----";
+              target.classList.toggle("pressed", pressed);
+            }
+            log(`🔘 按键 ${id === 1 ? "A" : "B"} ${pressed ? "按下" : "释放"}`, "info");
+            break;
+          }
+          case CMD.ERROR:
+            log(`❌ 设备错误码 0x${payload[0].toString(16)}`, "err");
+            break;
+          default:
+            log(`未知响应 cmd=0x${cmd.toString(16)}`, "err");
+        }
+      };
+
+      // =========================================================
+      // 事件绑定
+      // =========================================================
+      btnConnect.addEventListener("click", async () => {
+        if (!navigator.bluetooth) {
+          alert("当前浏览器不支持 Web Bluetooth。请使用桌面 Chrome/Edge 或 Android Chrome。");
+          return;
+        }
+        try {
+          statusEl.classList.add("connecting");
+          statusText.textContent = "连接中...";
+          log("🔍 请求选择设备...", "info");
+
+          // Web Bluetooth 对 128-bit UUID 的 services 过滤器在 macOS Chrome 上存在兼容性问题。
+          // 解决方案：使用 namePrefix 过滤（可靠），连接后再验证服务是否可用。
+          // 如果 namePrefix 仍然无法发现设备，使用 acceptAllDevices 作为后备。
+          let device;
+          try {
+            device = await navigator.bluetooth.requestDevice({
+              filters: [{ namePrefix: "MicroBit" }],
+              optionalServices: [NUS_SERVICE],
+            });
+          } catch (e) {
+            log(`⚠️ namePrefix 过滤未找到设备，尝试显示所有 BLE 设备...`, "info");
+            // 后备方案：显示所有 BLE 设备（用户需要手动选择）
+            device = await navigator.bluetooth.requestDevice({
+              acceptAllDevices: true,
+              optionalServices: [NUS_SERVICE],
+            });
+          }
+          state.device = device;
+          device.addEventListener("gattserverdisconnected", handleDisconnect);
+
+          log(`📲 已选择设备: ${device.name || "(无名)"}`, "info");
+          const server = await device.gatt.connect();
+          state.server = server;
+          log(`🔌 GATT 已连接`, "info");
+
+          const service = await server.getPrimaryService(NUS_SERVICE);
+          state.rxChar = await service.getCharacteristic(NUS_RX_CHAR);
+          state.txChar = await service.getCharacteristic(NUS_TX_CHAR);
+
+          await state.txChar.startNotifications();
+          state.txChar.addEventListener("characteristicvaluechanged", handleNotify);
+
+          setConnected(true);
+          log("✅ 已就绪，可以收发数据", "info");
+        } catch (e) {
+          log(`❌ 连接失败: ${e.message}`, "err");
+          statusEl.classList.remove("connecting");
+          statusText.textContent = "未连接";
+        }
+      });
+
+      const handleDisconnect = () => {
+        log("⚠️ 设备已断开", "err");
+        setConnected(false);
+        state.device = null;
+        state.server = null;
+        state.rxChar = null;
+        state.txChar = null;
+      };
+
+      btnDisconnect.addEventListener("click", () => {
+        if (state.device?.gatt?.connected) state.device.gatt.disconnect();
+      });
+
+      // LED
+      document.getElementById("btnLedSend").addEventListener("click", () => {
+        sendFrame(CMD.LED_SET, state.ledFrame);
+      });
+      document.getElementById("btnLedClear").addEventListener("click", () => {
+        state.ledFrame = new Uint8Array(25);
+        refreshLedGrid();
+        sendFrame(CMD.LED_CLEAR);
+      });
+      document.getElementById("btnLedAll").addEventListener("click", () => {
+        state.ledFrame = new Uint8Array(25).fill(1);
+        refreshLedGrid();
+        sendFrame(CMD.LED_SET, state.ledFrame);
+      });
+      document.getElementById("btnLedChar").addEventListener("click", () => {
+        const v = document.getElementById("charInput").value;
+        if (!v) return;
+        sendFrame(CMD.LED_CHAR, [v.charCodeAt(0) & 0xff]);
+      });
+
+      // Ping/Temp
+      document.getElementById("btnPing").addEventListener("click", () => sendFrame(CMD.PING));
+      document.getElementById("btnTemp").addEventListener("click", () => sendFrame(CMD.TEMP_GET));
+
+      // 按钮订阅
+      document.getElementById("chkBtnSub").addEventListener("change", (e) => {
+        sendFrame(CMD.BTN_SUBSCRIBE, [e.target.checked ? 1 : 0]);
+      });
+
+      // Echo
+      document.getElementById("btnEcho").addEventListener("click", () => {
+        const text = document.getElementById("echoInput").value;
+        const payload = new TextEncoder().encode(text);
+        if (payload.length > 56) {
+          alert("文本过长（最多 56 字节 UTF-8）");
+          return;
+        }
+        sendFrame(CMD.ECHO, Array.from(payload));
+      });
+
+      // 启动提示
+      if (!navigator.bluetooth) {
+        log(
+          "⚠️ 当前环境不支持 Web Bluetooth。需要桌面 Chrome/Edge 或 Android Chrome，并在 https/localhost 访问。",
+          "err",
+        );
+      } else {
+        log('👋 准备就绪，点击右上角"连接 micro:bit"开始', "info");
+      }
+    </script>
+  </body>
+</html>

@@ -2,7 +2,8 @@
 # micro:bit V2 BLE 项目 - cargo-make 任务配置
 #
 # 使用方法:
-#   cargo make flash        - 一键完成: 烧录 SoftDevice + 编译并烧录应用程序
+#   cargo make flash        - 一键完成: 烧录 SoftDevice + 编译并烧录应用 + 复位运行
+#   cargo make run          - 编译烧录并监控 defmt 日志输出 (用于调试)
 #   cargo make flash-sd     - 仅烧录 SoftDevice S113
 #   cargo make flash-app    - 仅编译并烧录应用程序
 #   cargo make erase        - 完全擦除芯片
@@ -10,6 +11,7 @@
 #   cargo make check        - 检查代码编译
 #   cargo make fmt          - 格式化代码
 #   cargo make clippy       - 运行 Clippy 静态分析
+#   cargo make web          - 启动 Web Bluetooth 演示页面 (localhost:8080)
 # =============================================================================
 
 [env]
@@ -24,11 +26,11 @@ TARGET = "thumbv7em-none-eabihf"
 alias = "flash"
 
 # =============================================================================
-# flash - 完整流程: 烧录 SoftDevice + 编译并烧录应用
+# flash - 完整流程: 烧录 SoftDevice + 编译并烧录应用 + 复位运行
 # =============================================================================
 [tasks.flash]
-description = "一键完成: 烧录 SoftDevice + 编译并烧录应用程序"
-dependencies = ["flash-sd", "flash-app"]
+description = "一键完成: 烧录 SoftDevice + 编译并烧录应用程序 + 复位芯片"
+dependencies = ["flash-sd", "flash-app", "reset"]
 
 # =============================================================================
 # flash-sd - 烧录 SoftDevice S113 协议栈
@@ -36,7 +38,7 @@ dependencies = ["flash-sd", "flash-app"]
 [tasks.flash-sd]
 description = "烧录 SoftDevice S113 v7.3.0 到芯片"
 command = "probe-rs"
-args = ["download", "--chip", "${CHIP}", "--format", "hex", "${SOFTDEVICE_HEX}"]
+args = ["download", "--chip", "${CHIP}", "--binary-format", "ihex", "${SOFTDEVICE_HEX}"]
 
 [tasks.flash-sd.condition]
 files_exist = ["${SOFTDEVICE_HEX}"]
@@ -46,16 +48,18 @@ files_exist = ["${SOFTDEVICE_HEX}"]
 # =============================================================================
 [tasks.flash-app]
 description = "编译并烧录应用程序 (Release 模式)"
-command = "cargo"
-args = ["run", "--release"]
+dependencies = ["build"]
+command = "probe-rs"
+args = ["download", "--chip", "${CHIP}", "target/${TARGET}/release/microbit-ble"]
 
 # =============================================================================
 # flash-app-debug - 编译并烧录应用程序 (Debug 模式)
 # =============================================================================
 [tasks.flash-app-debug]
 description = "编译并烧录应用程序 (Debug 模式)"
-command = "cargo"
-args = ["run"]
+dependencies = ["build-debug"]
+command = "probe-rs"
+args = ["download", "--chip", "${CHIP}", "target/${TARGET}/debug/microbit-ble"]
 
 # =============================================================================
 # erase - 完全擦除芯片 (包括 SoftDevice)
@@ -114,6 +118,14 @@ command = "cargo"
 args = ["build", "--release"]
 
 # =============================================================================
+# build-debug - 编译 Debug 固件 (不烧录)
+# =============================================================================
+[tasks.build-debug]
+description = "编译 Debug 固件 (不烧录)"
+command = "cargo"
+args = ["build"]
+
+# =============================================================================
 # clean - 清理构建产物
 # =============================================================================
 [tasks.clean]
@@ -122,35 +134,64 @@ command = "cargo"
 args = ["clean"]
 
 # =============================================================================
-# setup - 首次设置: 下载 SoftDevice 并烧录
+# run - 编译烧录并监控 defmt 日志输出 (用于调试)
 # =============================================================================
-[tasks.setup]
-description = "首次设置: 下载 SoftDevice hex 文件"
+[tasks.run]
+description = "编译并烧录应用程序，复位后监控 defmt 日志输出 (用于调试)"
+dependencies = ["flash-sd", "build"]
 script_runner = "@shell"
 script = '''
-mkdir -p softdevice
-if [ ! -f "${SOFTDEVICE_HEX}" ]; then
-    echo "=========================================="
-    echo " SoftDevice S113 v7.3.0 下载"
-    echo "=========================================="
-    curl -L -o "${SOFTDEVICE_HEX}" \
-        "https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/softdevices/s113/s113_nrf52_7.3.0_softdevice.hex"
-    if [ $? -eq 0 ]; then
-        echo "✅ SoftDevice 下载完成: ${SOFTDEVICE_HEX}"
-    else
-        echo "❌ 下载失败，请手动下载 SoftDevice S113 v7.3.0"
-        echo "   下载地址: https://www.nordicsemi.com/Software-and-tools/Software/S113/Download"
-        echo "   放置路径: ${SOFTDEVICE_HEX}"
-        exit 1
-    fi
-else
-    echo "✅ SoftDevice 已存在: ${SOFTDEVICE_HEX}"
-fi
+echo ">>> 烧录应用程序..."
+probe-rs download --chip ${CHIP} target/${TARGET}/release/microbit-ble
+echo ">>> 复位芯片 (从 MBR/SoftDevice 正常启动)..."
+probe-rs reset --chip ${CHIP}
+echo ">>> 连接 RTT 日志 (按 Ctrl+C 退出)..."
+probe-rs attach --chip ${CHIP} --rtt-scan-memory target/${TARGET}/release/microbit-ble
 '''
 
 # =============================================================================
-# init - 完整初始化: 下载 SoftDevice + 擦除芯片 + 烧录全部
+# run-debug - Debug 模式编译烧录并监控日志
+# =============================================================================
+[tasks.run-debug]
+description = "Debug 模式编译并烧录，复位后监控 defmt 日志输出"
+dependencies = ["flash-sd", "build-debug"]
+script_runner = "@shell"
+script = '''
+echo ">>> 烧录应用程序 (Debug)..."
+probe-rs download --chip ${CHIP} target/${TARGET}/debug/microbit-ble
+echo ">>> 复位芯片 (从 MBR/SoftDevice 正常启动)..."
+probe-rs reset --chip ${CHIP}
+echo ">>> 连接 RTT 日志 (按 Ctrl+C 退出)..."
+probe-rs attach --chip ${CHIP} --rtt-scan-memory target/${TARGET}/debug/microbit-ble
+'''
+
+# =============================================================================
+# init - 完整初始化:  擦除芯片 + 烧录全部
 # =============================================================================
 [tasks.init]
-description = "完整初始化: 下载 SoftDevice + 擦除芯片 + 烧录全部"
-dependencies = ["setup", "erase", "flash"]
+description = "完整初始化: 擦除芯片 + 烧录全部"
+dependencies = ["erase", "flash"]
+
+# =============================================================================
+# web - 启动浏览器演示页面服务器（Rust，纯 std，端口 8080）
+# =============================================================================
+[tasks.web]
+description = "启动 Web Bluetooth 演示页面服务器 (http://127.0.0.1:8080)"
+script_runner = "@shell"
+script = '''
+HOST_TARGET=$(rustc -vV | sed -n 's/^host: //p')
+echo ">>> 宿主 target: ${HOST_TARGET}"
+echo ">>> 编译并启动 web-server (端口 8080)..."
+cargo run --release --target "${HOST_TARGET}" --manifest-path web-server/Cargo.toml
+'''
+
+# =============================================================================
+# web-build - 仅编译 web-server
+# =============================================================================
+[tasks.web-build]
+description = "仅编译 web-server (不运行)"
+script_runner = "@shell"
+script = '''
+HOST_TARGET=$(rustc -vV | sed -n 's/^host: //p')
+cargo build --release --target "${HOST_TARGET}" --manifest-path web-server/Cargo.toml
+'''

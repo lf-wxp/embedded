@@ -1178,6 +1178,7 @@ dependencies = [
  "base64",
  "console_error_panic_hook",
  "console_log",
+ "gloo-timers",
  "hex",
  "js-sys",
  "leptos",

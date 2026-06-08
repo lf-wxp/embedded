@@ -10,14 +10,17 @@ pub mod battery;
 pub mod buttons;
 pub mod commands;
 pub mod led_matrix;
+pub mod motion;
 pub mod nus;
+pub mod sound;
+pub mod touch;
 
 use core::mem;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use defmt::{info, warn};
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either3, select3};
+use embassy_futures::select::{Either, select};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use nrf_softdevice::Softdevice;
@@ -176,6 +179,9 @@ impl BleController {
       info!("BLE device connected!");
       // Clear subscription state (reset on new connection)
       buttons::set_subscribed(false);
+      touch::set_subscribed(false);
+      motion::set_accel_subscribed(false);
+      motion::set_magnet_subscribed(false);
 
       // GATT event loop
       let nus_ref = &self.server.nus;
@@ -211,14 +217,67 @@ impl BleController {
         }
       };
 
+      // Touch event forwarding: take from TOUCH_EVENTS channel, encode and send via NUS
+      let touch_forward = async {
+        loop {
+          let evt = touch::TOUCH_EVENTS.receive().await;
+          if !touch::is_subscribed() {
+            continue;
+          }
+          if let Some(resp) = commands::encode_touch_event(evt) {
+            let _ = nus_ref.send(conn_ref, resp.as_slice());
+          }
+        }
+      };
+
+      // Accelerometer data forwarding
+      let accel_forward = async {
+        loop {
+          let data = motion::ACCEL_EVENTS.receive().await;
+          if !motion::is_accel_subscribed() {
+            continue;
+          }
+          if let Some(resp) = commands::encode_accel_data(data) {
+            let _ = nus_ref.send(conn_ref, resp.as_slice());
+          }
+        }
+      };
+
+      // Magnetometer data forwarding
+      let magnet_forward = async {
+        loop {
+          let data = motion::MAGNET_EVENTS.receive().await;
+          if !motion::is_magnet_subscribed() {
+            continue;
+          }
+          if let Some(resp) = commands::encode_magnet_data(data) {
+            let _ = nus_ref.send(conn_ref, resp.as_slice());
+          }
+        }
+      };
+
       let disconnect_future = DISCONNECT_SIGNAL.wait();
 
-      match select3(gatt_future, button_forward, disconnect_future).await {
-        Either3::First(_) => info!("Connection disconnected, re-advertising..."),
-        Either3::Second(_) => {
-          info!("Button forwarding task ended (should not happen), re-advertising...")
+      // Use nested select to handle all 6 concurrent futures:
+      // gatt, button_forward, touch_forward, accel_forward, magnet_forward, disconnect
+      match select(
+        select(gatt_future, button_forward),
+        select(
+          select(touch_forward, accel_forward),
+          select(magnet_forward, disconnect_future),
+        ),
+      )
+      .await
+      {
+        Either::First(Either::First(_)) => {
+          info!("Connection disconnected, re-advertising...");
         }
-        Either3::Third(_) => info!("Active disconnect, re-advertising..."),
+        Either::First(Either::Second(_)) => {
+          info!("Button forwarding ended (should not happen), re-advertising...");
+        }
+        _ => {
+          info!("Task ended or disconnect signal, re-advertising...");
+        }
       }
     }
   }

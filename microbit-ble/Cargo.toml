@@ -9,7 +9,7 @@ microbit-ble-protocol = { path = "../microbit-ble-protocol" }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
 embassy-executor-timer-queue = "0.1.0"
 embassy-futures = "0.1.2"
-embassy-nrf = { version = "0.10.0", features = ["nrf52833", "time-driver-rtc1", "gpiote"] }
+embassy-nrf = { version = "0.10.0", features = ["nrf52833", "time-driver-rtc1", "gpiote", "nfc-pins-as-gpio"] }
 embassy-sync = "0.8.0"
 embassy-time = { version = "0.5.1", features = ["tick-hz-32_768"] }
 

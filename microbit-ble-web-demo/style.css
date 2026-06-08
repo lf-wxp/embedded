@@ -202,7 +202,6 @@ input[type='text']:focus {
 
 .btn-state {
   display: inline-block;
-  width: 50px;
   height: 24px;
   text-align: center;
   font-weight: 600;
@@ -266,4 +265,277 @@ label {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+/* ===== Sound Panel ===== */
+
+.note-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.note-btn {
+  min-width: 44px;
+  height: 36px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 6px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  background: var(--panel-2);
+  color: var(--fg);
+  border-radius: 4px;
+}
+
+.note-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #0d1117;
+}
+
+.note-btn.sharp {
+  background: #2a1f3d;
+  color: #c9b3ff;
+  min-width: 38px;
+}
+
+.note-btn.sharp:hover:not(:disabled) {
+  background: #8b5cf6;
+  color: white;
+}
+
+.short-input {
+  width: 100px !important;
+  flex: none !important;
+}
+
+/* ===== Motion Sensor Panel ===== */
+
+.sensor-section {
+  margin-bottom: 14px;
+}
+
+.sensor-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.sensor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sensor-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.toggle-label {
+  font-size: 12px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.axis-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.axis-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.axis-label {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--muted);
+  min-width: 14px;
+  text-align: center;
+}
+
+.axis-bar-container {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.axis-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.15s ease;
+  min-width: 2px;
+}
+
+.axis-bar.axis-x { background: var(--accent); }
+.axis-bar.axis-y { background: var(--accent-2); }
+.axis-bar.axis-z { background: var(--warn); }
+.axis-bar.axis-mx { background: #c084fc; }
+.axis-bar.axis-my { background: #f472b6; }
+.axis-bar.axis-mz { background: #fbbf24; }
+
+.axis-value {
+  font-size: 11px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--muted);
+  min-width: 60px;
+  text-align: right;
+}
+
+.stat-row {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== Compass ===== */
+
+.compass-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.compass {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.compass-needle {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 3px;
+  height: 24px;
+  margin-left: -1.5px;
+  background: var(--error);
+  border-radius: 2px;
+}
+
+.compass-n {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--error);
+}
+
+.compass-heading {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--fg);
+}
+
+/* ===== LED Brightness ===== */
+
+.brightness-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  outline: none;
+  border: 1px solid var(--border);
+}
+
+.brightness-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+.brightness-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+.led.brightness-mode.on {
+  background: #ff4444;
+  border-color: #ff4444;
+}
+
+/* ===== Layout adjustment for more cards ===== */
+
+@media (min-width: 1200px) {
+  main {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+/* ===== Touch Sensor ===== */
+
+.touch-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.touch-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.touch-indicator {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-2);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--muted);
+  transition: all 0.15s;
+  cursor: default;
+}
+
+.touch-indicator.touched {
+  background: #2d1f5e;
+  border-color: #8b5cf6;
+  color: #c9b3ff;
+  box-shadow: 0 0 10px #8b5cf6aa;
+}
+
+.touch-label {
+  font-size: 16px;
+  text-align: center;
+  color: var(--muted);
+  transition: color 0.15s;
 }

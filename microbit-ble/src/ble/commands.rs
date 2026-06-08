@@ -8,10 +8,15 @@ use nrf_softdevice::temperature_celsius;
 
 use super::buttons;
 use super::led_matrix;
+use super::motion;
+use super::sound;
+use super::touch;
 use microbit_ble_protocol::{
-  CMD_BTN_EVENT, CMD_BTN_SUBSCRIBE, CMD_ECHO, CMD_ECHO_RESP, CMD_ERROR, CMD_LED_ACK, CMD_LED_CHAR,
-  CMD_LED_CLEAR, CMD_LED_SET, CMD_PING, CMD_PONG, CMD_TEMP_GET, CMD_TEMP_RESP, ERR_BAD_CRC,
-  ERR_BAD_FRAME, ERR_BAD_PAYLOAD, ERR_UNKNOWN_CMD, MAX_FRAME_LEN,
+  CMD_ACCEL_DATA, CMD_ACCEL_SUBSCRIBE, CMD_BTN_EVENT, CMD_BTN_SUBSCRIBE, CMD_ECHO, CMD_ECHO_RESP,
+  CMD_ERROR, CMD_LED_ACK, CMD_LED_BRIGHTNESS, CMD_LED_CHAR, CMD_LED_CLEAR, CMD_LED_SCROLL,
+  CMD_LED_SET, CMD_MAGNET_DATA, CMD_MAGNET_SUBSCRIBE, CMD_PING, CMD_PONG, CMD_SOUND_ACK,
+  CMD_SOUND_PLAY, CMD_SOUND_STOP, CMD_TEMP_GET, CMD_TEMP_RESP, CMD_TOUCH_EVENT,
+  CMD_TOUCH_SUBSCRIBE, ERR_BAD_CRC, ERR_BAD_FRAME, ERR_BAD_PAYLOAD, ERR_UNKNOWN_CMD, MAX_FRAME_LEN,
 };
 
 /// Processing result: encoded response frame (at most one frame)
@@ -44,6 +49,30 @@ impl Response {
 pub fn encode_button_event(evt: buttons::ButtonEvent) -> Option<Response> {
   let payload = [evt.id as u8, evt.pressed as u8];
   Response::build(CMD_BTN_EVENT, &payload)
+}
+
+/// Encode touch event into a frame
+pub fn encode_touch_event(evt: touch::TouchEvent) -> Option<Response> {
+  let payload = [evt.id as u8, evt.pressed as u8];
+  Response::build(CMD_TOUCH_EVENT, &payload)
+}
+
+/// Encode accelerometer data into a frame
+pub fn encode_accel_data(data: motion::AccelData) -> Option<Response> {
+  let mut payload = [0u8; 6];
+  payload[0..2].copy_from_slice(&data.x.to_le_bytes());
+  payload[2..4].copy_from_slice(&data.y.to_le_bytes());
+  payload[4..6].copy_from_slice(&data.z.to_le_bytes());
+  Response::build(CMD_ACCEL_DATA, &payload)
+}
+
+/// Encode magnetometer data into a frame
+pub fn encode_magnet_data(data: motion::MagnetData) -> Option<Response> {
+  let mut payload = [0u8; 6];
+  payload[0..2].copy_from_slice(&data.x.to_le_bytes());
+  payload[2..4].copy_from_slice(&data.y.to_le_bytes());
+  payload[4..6].copy_from_slice(&data.z.to_le_bytes());
+  Response::build(CMD_MAGNET_DATA, &payload)
 }
 
 /// Process one NUS RX write, return the response to write back (if any)
@@ -116,6 +145,63 @@ pub fn handle_rx(sd: &Softdevice, data: &[u8]) -> Option<Response> {
         return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
       }
       buttons::set_subscribed(frame.payload[0] != 0);
+      Response::build(CMD_LED_ACK, &[0])
+    }
+
+    CMD_TOUCH_SUBSCRIBE => {
+      if frame.payload.len() != 1 {
+        return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
+      }
+      touch::set_subscribed(frame.payload[0] != 0);
+      Response::build(CMD_LED_ACK, &[0])
+    }
+
+    CMD_SOUND_PLAY => {
+      if frame.payload.len() != 4 {
+        return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
+      }
+      let freq = u16::from_le_bytes([frame.payload[0], frame.payload[1]]);
+      let duration = u16::from_le_bytes([frame.payload[2], frame.payload[3]]);
+      sound::play_tone(freq, duration);
+      Response::build(CMD_SOUND_ACK, &[0])
+    }
+
+    CMD_SOUND_STOP => {
+      sound::stop_tone();
+      Response::build(CMD_SOUND_ACK, &[0])
+    }
+
+    CMD_ACCEL_SUBSCRIBE => {
+      if frame.payload.len() != 1 {
+        return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
+      }
+      motion::set_accel_subscribed(frame.payload[0] != 0);
+      Response::build(CMD_LED_ACK, &[0])
+    }
+
+    CMD_MAGNET_SUBSCRIBE => {
+      if frame.payload.len() != 1 {
+        return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
+      }
+      motion::set_magnet_subscribed(frame.payload[0] != 0);
+      Response::build(CMD_LED_ACK, &[0])
+    }
+
+    CMD_LED_BRIGHTNESS => {
+      if frame.payload.len() != 25 {
+        return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
+      }
+      led_matrix::set_brightness_from_bytes(frame.payload);
+      info!("LED brightness updated");
+      Response::build(CMD_LED_ACK, &[0])
+    }
+
+    CMD_LED_SCROLL => {
+      if frame.payload.is_empty() {
+        return Response::build(CMD_ERROR, &[ERR_BAD_PAYLOAD]);
+      }
+      led_matrix::scroll_text(frame.payload);
+      info!("LED scroll text queued");
       Response::build(CMD_LED_ACK, &[0])
     }
 

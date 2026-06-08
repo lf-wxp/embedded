@@ -34,6 +34,13 @@ pub fn SensorPanel() -> impl IntoView {
   let (btn_subscribed, set_btn_subscribed) = signal(false);
   let (updating, set_updating) = signal(false);
 
+  // Touch sensor state
+  let (touch_logo, set_touch_logo) = signal(false);
+  let (touch_pin0, set_touch_pin0) = signal(false);
+  let (touch_pin1, set_touch_pin1) = signal(false);
+  let (touch_pin2, set_touch_pin2) = signal(false);
+  let (touch_subscribed, set_touch_subscribed) = signal(false);
+
   // Listen for received frames, handle temperature response and button events
   Effect::new(move |_| {
     if let Some(frame) = last_frame.get() {
@@ -63,6 +70,18 @@ pub fn SensorPanel() -> impl IntoView {
           match btn_id {
             1 => set_button_a.set(pressed),
             2 => set_button_b.set(pressed),
+            _ => {}
+          }
+        }
+        // Touch sensor event (0x91)
+        cmd if cmd == Command::TouchEvent as u8 && frame.payload.len() >= 2 => {
+          let touch_id = frame.payload[0];
+          let pressed = frame.payload[1] != 0;
+          match touch_id {
+            0 => set_touch_logo.set(pressed),
+            1 => set_touch_pin0.set(pressed),
+            2 => set_touch_pin1.set(pressed),
+            3 => set_touch_pin2.set(pressed),
             _ => {}
           }
         }
@@ -123,6 +142,62 @@ pub fn SensorPanel() -> impl IntoView {
     }
   };
 
+  // Subscribe/unsubscribe touch sensor events
+  let toggle_touch_subscribe = move |_| {
+    if !connected.get() {
+      return;
+    }
+    let new_state = !touch_subscribed.get();
+    let payload = [u8::from(new_state)];
+    match build_frame(Command::TouchSubscribe as u8, &payload) {
+      Ok(frame) => {
+        log_tx(
+          format!("TouchSubscribe({})", if new_state { "on" } else { "off" }),
+          Some(frame.clone()),
+        );
+        set_touch_subscribed.set(new_state);
+        if !new_state {
+          set_touch_logo.set(false);
+          set_touch_pin0.set(false);
+          set_touch_pin1.set(false);
+          set_touch_pin2.set(false);
+        }
+        ble_send_frame(frame);
+      }
+      Err(e) => log_error(format!("Build frame failed: {e}")),
+    }
+  };
+
+  // Touch state display helpers
+  let touch_logo_class = move || {
+    let mut cls = "touch-indicator".to_string();
+    if touch_logo.get() {
+      cls.push_str(" touched");
+    }
+    cls
+  };
+  let touch_pin0_class = move || {
+    let mut cls = "touch-indicator".to_string();
+    if touch_pin0.get() {
+      cls.push_str(" touched");
+    }
+    cls
+  };
+  let touch_pin1_class = move || {
+    let mut cls = "touch-indicator".to_string();
+    if touch_pin1.get() {
+      cls.push_str(" touched");
+    }
+    cls
+  };
+  let touch_pin2_class = move || {
+    let mut cls = "touch-indicator".to_string();
+    if touch_pin2.get() {
+      cls.push_str(" touched");
+    }
+    cls
+  };
+
   // Button state display
   let btn_a_class = move || {
     let mut cls = "btn-state".to_string();
@@ -164,7 +239,47 @@ pub fn SensorPanel() -> impl IntoView {
               <span class="stat">"A: "<span class=btn_a_class>{move || if button_a.get() { "Pressed" } else { "--" }}</span></span>
               <span class="stat">"B: "<span class=btn_b_class>{move || if button_b.get() { "Pressed" } else { "--" }}</span></span>
           </div>
-          <p class="hint">"Press onboard button A or B after subscribing to see real-time status."</p>
+
+          // Touch sensor section
+          <div class="row" style="margin-top: 14px;">
+              <label>
+                  <input
+                      type="checkbox"
+                      disabled=move || !connected.get()
+                      checked=move || touch_subscribed.get()
+                      on:change=toggle_touch_subscribe
+                  />
+                  " Subscribe to Touch events"
+              </label>
+          </div>
+          <div class="touch-grid">
+              <div class="touch-item">
+                  <div class=touch_logo_class>
+                      "Logo"
+                  </div>
+                  <span class="touch-label">{move || if touch_logo.get() { "✋" } else { "·" }}</span>
+              </div>
+              <div class="touch-item">
+                  <div class=touch_pin0_class>
+                      "Pin 0"
+                  </div>
+                  <span class="touch-label">{move || if touch_pin0.get() { "✋" } else { "·" }}</span>
+              </div>
+              <div class="touch-item">
+                  <div class=touch_pin1_class>
+                      "Pin 1"
+                  </div>
+                  <span class="touch-label">{move || if touch_pin1.get() { "✋" } else { "·" }}</span>
+              </div>
+              <div class="touch-item">
+                  <div class=touch_pin2_class>
+                      "Pin 2"
+                  </div>
+                  <span class="touch-label">{move || if touch_pin2.get() { "✋" } else { "·" }}</span>
+              </div>
+          </div>
+
+          <p class="hint">"Press onboard button A or B, or touch the Logo / Pin 0/1/2 after subscribing."</p>
       </section>
   }
 }

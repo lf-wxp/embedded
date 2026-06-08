@@ -27,6 +27,9 @@ use panic_probe as _;
 
 use ble::buttons::{ButtonPins, button_task};
 use ble::led_matrix::{LedPins, led_matrix_task};
+use ble::motion::{MotionPins, motion_task};
+use ble::sound::{SoundPins, sound_task};
+use ble::touch::{TouchPins, touch_task};
 use ble::{BleConfig, BleController};
 
 /// BLE device name (shown in Bluetooth scan list)
@@ -81,6 +84,36 @@ async fn main(spawner: Spawner) {
       btn_b: p.P0_23,
     })
     .expect("button_task spawn failed"),
+  );
+
+  // ========================================
+  // 3b. Start touch sensor monitoring task
+  // ========================================
+  spawner.spawn(
+    touch_task(TouchPins {
+      logo: p.P0_10,
+      pin0: p.P0_02,
+      pin1: p.P0_03,
+      pin2: p.P0_04,
+    })
+    .expect("touch_task spawn failed"),
+  );
+
+  // ========================================
+  // 3c. Start sound/buzzer task
+  // ========================================
+  spawner.spawn(sound_task(SoundPins { speaker: p.P0_00 }).expect("sound_task spawn failed"));
+
+  // ========================================
+  // 3d. Start motion sensor task (I2C accelerometer + magnetometer)
+  // ========================================
+  spawner.spawn(
+    motion_task(MotionPins {
+      twi: p.TWISPI0,
+      sda: p.P0_16,
+      scl: p.P0_08,
+    })
+    .expect("motion_task spawn failed"),
   );
 
   // ========================================

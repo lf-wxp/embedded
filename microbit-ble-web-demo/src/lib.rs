@@ -56,6 +56,10 @@ fn App() -> impl IntoView {
           <components::led_matrix::LedMatrixCard />
           // Onboard sensors / button status
           <components::sensor_panel::SensorPanel />
+          // Sound / buzzer control
+          <components::sound_panel::SoundPanel />
+          // Accelerometer & magnetometer
+          <components::motion_panel::MotionPanel />
           // Echo loopback test
           <components::echo_panel::EchoPanel />
           // Communication log

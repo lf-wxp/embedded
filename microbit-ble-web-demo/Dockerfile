@@ -12,22 +12,27 @@ RUN cargo install trunk
 # Set working directory
 WORKDIR /app
 
-# Copy Cargo.toml and Cargo.lock to leverage Docker caching
-COPY Cargo.toml Cargo.lock ./
+# Enable web-sys unstable APIs (required for Bluetooth API)
+ENV RUSTFLAGS="--cfg=web_sys_unstable_apis"
 
-# Create an empty lib.rs so Cargo can cache dependencies
-# (This step is to leverage Docker layer caching)
-RUN mkdir -p src && \
-    echo "// dummy" > src/lib.rs && \
-    echo "<!doctype html><html><head></head><body></body></html>" > index.html && \
-    cargo fetch || true
+# Copy the local dependency (microbit-ble-protocol) first
+# The path dependency is specified as "../microbit-ble-protocol" in Cargo.toml
+# So we need to create the same directory structure
+COPY microbit-ble-protocol /app/microbit-ble-protocol
 
-# Copy source code
-COPY src ./src
-COPY index.html .
-COPY Trunk.toml .
-COPY style.css .
-COPY .cargo .cargo
+# Copy the web demo project
+COPY microbit-ble-web-demo/Cargo.toml /app/microbit-ble-web-demo/Cargo.toml
+COPY microbit-ble-web-demo/Cargo.lock /app/microbit-ble-web-demo/Cargo.lock
+COPY microbit-ble-web-demo/index.html /app/microbit-ble-web-demo/
+COPY microbit-ble-web-demo/Trunk.toml /app/microbit-ble-web-demo/
+COPY microbit-ble-web-demo/src /app/microbit-ble-web-demo/src
+COPY microbit-ble-web-demo/style.css /app/microbit-ble-web-demo/
+
+# Copy .cargo config if exists (for build flags)
+# COPY microbit-ble-web-demo/.cargo /app/microbit-ble-web-demo/.cargo
+
+# Change to the web demo directory and build
+WORKDIR /app/microbit-ble-web-demo
 
 # Build the application (debug mode)
 # For release mode, change the line below to: RUN trunk build --release
@@ -38,11 +43,8 @@ RUN trunk build
 # ============================================
 FROM nginx:alpine
 
-# Copy custom nginx config (if it exists)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-
 # Copy build artifacts from the builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/microbit-ble-web-demo/dist /usr/share/nginx/html
 
 # Expose port 80
 EXPOSE 80

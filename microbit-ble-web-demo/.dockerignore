@@ -2,11 +2,14 @@
 .git
 .gitignore
 
-# Rust 构建产物
+# Rust build artifacts (for both crates)
 target/
+microbit-ble/target/
+microbit-ble-protocol/target/
+microbit-ble-web-demo/target/
 
-# Trunk 构建产物
-dist/
+# Trunk build artifacts
+microbit-ble-web-demo/dist/
 
 # IDE
 .vscode/
@@ -18,6 +21,14 @@ dist/
 # macOS
 .DS_Store
 
-# 临时文件
+# Temporary files
 *.log
 *.tmp
+
+# Rust registry (to speed up build, we want to use Docker cache for deps)
+# Comment out if you want to copy local registry
+.cargo/registry/
+.cargo/git/
+
+# Softdevice hex files (not needed for web demo build)
+microbit-ble/softdevice/

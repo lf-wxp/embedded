@@ -4,8 +4,8 @@ services:
   # micro:bit BLE Web Demo service
   microbit-ble-web-demo:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../
+      dockerfile: microbit-ble-web-demo/Dockerfile
     container_name: microbit-ble-web-demo
     ports:
       - "8080:80"

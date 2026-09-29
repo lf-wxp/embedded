@@ -1,13 +1,15 @@
 # ============================================
 # Stage 1: Build the WASM application
 # ============================================
-FROM rust:latest AS builder
+FROM rust:1.98.1 AS builder
 
 # Install the wasm32 target
 RUN rustup target add wasm32-unknown-unknown
 
 # Install Trunk (the officially recommended build tool for Leptos)
-RUN cargo install trunk
+# Use --locked to respect trunk's Cargo.lock and avoid dependency version
+# conflicts (e.g. multiple cssparser versions breaking lightningcss).
+RUN cargo install trunk --locked
 
 # Set working directory
 WORKDIR /app
